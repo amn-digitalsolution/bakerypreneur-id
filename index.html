@@ -785,7 +785,7 @@
         </div>
         <div class="form-group">
           <label>Biaya Tambahan Non-Stok Lainnya (Opsional Rp)</label>
-          <input type="number" id="bun-packaging" value="2500" min="0" oninput="recalcBundlePreview()" />
+          <input type="number" id="bun-packaging" value="0" min="0" oninput="recalcBundlePreview()" />
           <div class="helper-text">Biaya ekstra kemasan paket di luar kue satuan.</div>
         </div>
 
@@ -4384,20 +4384,6 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     });
     const finishedGoodsCogs = allocatedValues.slice(0, lotRows.length).reduce((sum, value) => sum + value, 0);
     extraBundlePackagingCost = allocatedValues[lotRows.length];
-    if (extraBundlePackagingCost > 0) {
-      const packagingExpense = validateProductionExpenseBalances(db.ledger, [
-        { account: 'Beban Kemasan & Perlengkapan', amount: extraBundlePackagingCost }
-      ]);
-      if (!packagingExpense.available) {
-        return {
-          ok: false, missingExpenseName: 'Biaya kemasan bundel',
-          expenseAccount: 'Beban Kemasan & Perlengkapan',
-          expenseShortage: packagingExpense.shortages[0]
-            ? packagingExpense.shortages[0].required - packagingExpense.shortages[0].available
-            : extraBundlePackagingCost
-        };
-      }
-    }
 
     if (executeDeduct) {
       const originalValues = new Map(deductions.map(row => [row.recipe.id, Number(row.recipe.finishedStock) * Number(row.recipe.finishedAvgHpp || 0)]));
@@ -6525,7 +6511,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     if (databaseHasBusinessData() && !confirm('Data Contoh Bakery akan MENGGANTI seluruh data usaha saat ini. Pastikan Anda sudah membuat backup. Lanjutkan?')) return;
 
     const previousDatabaseJson = JSON.stringify(db);
-    const m1 = uid(), m2 = uid(), m3 = uid(), m4 = uid(), m5 = uid();
+    const m1 = uid(), m2 = uid(), m3 = uid(), m4 = uid(), m5 = uid(), m6 = uid();
     const r1 = uid(), r2 = uid(), r3 = uid();
     const t = todayStr();
 
@@ -6542,11 +6528,12 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       },
       customExpenseAccounts: ['Beban Ongkir & Kurir'],
       materials: [
-        { id: m1, name: 'Tepung Terigu Protein Sedang', unit: 'gr', stock: 8500, avgCost: 14, minStock: 2000 },
-        { id: m2, name: 'Dark Cooking Chocolate (DCC)', unit: 'gr', stock: 3200, avgCost: 68, minStock: 1000 },
-        { id: m3, name: 'Butter Margarine Premium', unit: 'gr', stock: 3800, avgCost: 42, minStock: 1000 },
-        { id: m4, name: 'Telur Ayam Segar', unit: 'pcs', stock: 70, avgCost: 2000, minStock: 20 },
-        { id: m5, name: 'Gula Pasir Halus', unit: 'gr', stock: 4100, avgCost: 17, minStock: 1000 }
+        { id: m1, name: 'Tepung Terigu Protein Sedang', category: 'BAHAN_BAKU', unit: 'gr', stock: 8500, avgCost: 14, minStock: 2000 },
+        { id: m2, name: 'Dark Cooking Chocolate (DCC)', category: 'BAHAN_BAKU', unit: 'gr', stock: 3200, avgCost: 68, minStock: 1000 },
+        { id: m3, name: 'Butter Margarine Premium', category: 'BAHAN_BAKU', unit: 'gr', stock: 3800, avgCost: 42, minStock: 1000 },
+        { id: m4, name: 'Telur Ayam Segar', category: 'BAHAN_BAKU', unit: 'pcs', stock: 70, avgCost: 2000, minStock: 20 },
+        { id: m5, name: 'Gula Pasir Halus', category: 'BAHAN_BAKU', unit: 'gr', stock: 4100, avgCost: 17, minStock: 1000 },
+        { id: m6, name: 'Dus Hampers & Snackbox VIP', category: 'KEMASAN', unit: 'pcs', stock: 18, avgCost: 8000, minStock: 5 }
       ],
       recipes: [
         {
@@ -6564,9 +6551,9 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
             { matId: m5, qty: 280 }
           ],
           wastePct: 3,
-          packagingCost: 9000,
-          laborCost: 3250,
-          overheadVal: 15,
+          packagingCost: 0,
+          laborCost: 0,
+          overheadVal: 0,
           overheadType: 'pct',
           sellPrice: 85000,
           finishedStock: 6,
@@ -6585,9 +6572,9 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
             { matId: m5, qty: 60 }
           ],
           wastePct: 4,
-          packagingCost: 12000,
-          laborCost: 8500,
-          overheadVal: 15000,
+          packagingCost: 0,
+          laborCost: 0,
+          overheadVal: 0,
           overheadType: 'fixed',
           sellPrice: 22000,
           finishedStock: 20,
@@ -6603,7 +6590,10 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
             { recipeId: r1, qty: 1 },
             { recipeId: r2, qty: 2 }
           ],
-          packagingCost: 8000,
+          bundleSupplies: [
+            { matId: m6, qty: 1 }
+          ],
+          packagingCost: 0,
           sellPrice: 145000
         }
       ],
@@ -6673,8 +6663,8 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       ledger: [
         { id: uid(), date: t, desc: 'Setoran Modal Awal Usaha Bakery', category: 'Setoran Modal Awal', debitAccount: 'Kas & Bank', creditAccount: 'Modal Pemilik', amount: 5000000 },
         { id: uid(), date: t, desc: 'Beli Oven Deck & Mixer Spiral', category: 'Pembelian Peralatan Dapur', debitAccount: 'Peralatan & Aset Dapur', creditAccount: 'Kas & Bank', amount: 2200000 },
-        { id: uid(), date: t, desc: 'Belanja Stok Bahan Baku untuk dataset contoh', category: 'Persediaan Bahan Baku', debitAccount: 'Persediaan Bahan Baku', creditAccount: 'Kas & Bank', amount: 992580 },
-        { id: uid(), date: t, desc: 'Biaya kemasan produksi & paket contoh', category: 'Beban Kemasan & Perlengkapan', debitAccount: 'Beban Kemasan & Perlengkapan', creditAccount: 'Kas & Bank', amount: 76000 },
+        { id: uid(), date: t, desc: 'Belanja Stok Bahan Baku & Kemasan Gudang untuk dataset contoh', category: 'Persediaan Bahan Baku', debitAccount: 'Persediaan Bahan Baku', creditAccount: 'Kas & Bank', amount: 1152580 },
+        { id: uid(), date: t, desc: 'Biaya kemasan produksi contoh', category: 'Beban Kemasan & Perlengkapan', debitAccount: 'Beban Kemasan & Perlengkapan', creditAccount: 'Kas & Bank', amount: 60000 },
         { id: uid(), date: t, desc: 'Biaya tenaga kerja produksi contoh', category: 'Beban Gaji & Upah', debitAccount: 'Beban Gaji & Upah', creditAccount: 'Kas & Bank', amount: 30000 },
         { id: uid(), date: t, desc: 'Biaya overhead produksi contoh', category: 'Beban Listrik, Air & Gas', debitAccount: 'Beban Listrik, Air & Gas', creditAccount: 'Kas & Bank', amount: 21720 },
         { id: uid(), date: t, desc: 'Produksi Brownies: pemakaian bahan', category: 'Persediaan Produk Jadi', debitAccount: 'Persediaan Produk Jadi', creditAccount: 'Persediaan Bahan Baku', amount: 242640 },
@@ -6687,7 +6677,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
         { id: uid(), date: t, desc: 'Produksi Croissant: overhead', category: 'Persediaan Produk Jadi', debitAccount: 'Persediaan Produk Jadi', creditAccount: 'Beban Listrik, Air & Gas', amount: 13360 },
         { id: uid(), date: t, desc: 'Penjualan INV-DEMO-001 (Kantor Notaris Hendra)', category: 'Pendapatan Penjualan', debitAccount: 'Kas & Bank', creditAccount: 'Pendapatan Penjualan', amount: 290000 },
         { id: uid(), date: t, desc: 'HPP Kue Terjual INV-DEMO-001', category: 'Harga Pokok Penjualan (HPP)', debitAccount: 'Harga Pokok Penjualan (HPP)', creditAccount: 'Persediaan Produk Jadi', amount: 91400 },
-        { id: uid(), date: t, desc: 'Biaya Kemasan Paket/Snackbox INV-DEMO-001', category: 'Harga Pokok Penjualan (HPP)', debitAccount: 'Harga Pokok Penjualan (HPP)', creditAccount: 'Beban Kemasan & Perlengkapan', amount: 16000 },
+        { id: uid(), date: t, desc: 'HPP Kemasan & Pelengkap Paket INV-DEMO-001', category: 'Harga Pokok Penjualan (HPP)', debitAccount: 'Harga Pokok Penjualan (HPP)', creditAccount: 'Persediaan Bahan Baku', amount: 16000 },
         { id: uid(), date: t, desc: 'Uang Muka PO INV-DEMO-002 (Ibu Rina Wijaya)', category: 'Uang Muka Pelanggan (PO)', debitAccount: 'Kas & Bank', creditAccount: 'Uang Muka Pelanggan (PO)', amount: 200000 },
         { id: uid(), date: t, desc: 'Bayar Token Listrik & Gas Tabung', category: 'Beban Listrik, Air & Gas', debitAccount: 'Beban Listrik, Air & Gas', creditAccount: 'Kas & Bank', amount: 120000 }
       ],
@@ -6703,7 +6693,8 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       { materialId: m2, name: 'Dark Cooking Chocolate (DCC)', unit: 'gr', openingQty: 5000, endingQty: 3200, issueQty: 1800, unitCost: 68 },
       { materialId: m3, name: 'Butter Margarine Premium', unit: 'gr', openingQty: 5400, endingQty: 3800, issueQty: 1600, unitCost: 42 },
       { materialId: m4, name: 'Telur Ayam Segar', unit: 'pcs', openingQty: 94, endingQty: 70, issueQty: 24, unitCost: 2000 },
-      { materialId: m5, name: 'Gula Pasir Halus', unit: 'gr', openingQty: 5340, endingQty: 4100, issueQty: 1240, unitCost: 17 }
+      { materialId: m5, name: 'Gula Pasir Halus', unit: 'gr', openingQty: 5340, endingQty: 4100, issueQty: 1240, unitCost: 17 },
+      { materialId: m6, name: 'Dus Hampers & Snackbox VIP', unit: 'pcs', openingQty: 20, endingQty: 18, issueQty: 2, unitCost: 8000 }
     ].forEach(flow => {
       const openingValue = flow.openingQty * flow.unitCost;
       const issueValue = flow.issueQty * flow.unitCost;
