@@ -7655,6 +7655,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     font-size: 0.8rem;
     color: #7A6866;
     margin-bottom: 16px;
+    line-height: 1.45;
   }
   .gate-input {
     width: 100%;
@@ -7675,7 +7676,22 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     font-size: 0.78rem;
     font-weight: 600;
     min-height: 1.2em;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  #trial-status-banner {
+    background: #FFF8E1;
+    border-bottom: 2px solid #F57C00;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    color: #4A2C2A;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    max-width: 760px;
+    margin: 0 auto;
+    font-weight: 600;
   }
 </style>
 
@@ -7683,36 +7699,129 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="gate-card">
     <div class="gate-logo">🧁</div>
     <div class="gate-title">Cake & Bakery Preneur</div>
-    <div class="gate-sub">Sistem Keuangan, Kasir, HPP & Manajemen Dapur<br>Masukkan <strong>Kode Akses Pembeli</strong> untuk membuka aplikasi di perangkat ini.</div>
+    <div class="gate-sub" id="gate-subtitle-text">Sistem Keuangan, Kasir, HPP & Manajemen Dapur<br>Masukkan <strong>Kode Akses Pembeli</strong> atau <strong>Kode Trial</strong> untuk membuka aplikasi.</div>
     <form id="form-access-gate" onsubmit="return verifyBuyerAccessCode(event)">
       <input type="text" id="buyer-access-input" class="gate-input" placeholder="KETIK KODE AKSES" autocomplete="off" required />
       <div id="gate-error-msg" class="gate-err"></div>
       <button type="submit" onclick="verifyBuyerAccessCode(event)" class="btn btn-primary" style="padding:12px; font-size:0.92rem;">🔓 Buka Aplikasi Sekarang</button>
     </form>
     <div style="margin-top:16px; padding-top:12px; border-top:1px dashed #E6DCD2; font-size:0.75rem; color:#7A6866;">
-      Belum memiliki Kode Akses Resmi?<br>
-      <a href="https://wa.me/6281953945148?text=Halo%20Admin%20Cake%20%26%20Bakery%20Preneur%2C%20saya%20ingin%20mendapatkan%20Kode%20Akses%20Aplikasi%20BakeryPreneur." target="_blank" style="color:#2E7D32; font-weight:700; text-decoration:none; display:inline-block; margin-top:4px;">📲 Hubungi Admin via WhatsApp (0819-5394-5148)</a>
+      Ingin membeli Kode Akses Resmi Permanen?<br>
+      <a href="https://wa.me/6281953945148?text=Halo%20Admin%20Cake%20%26%20Bakery%20Preneur%2C%20saya%20ingin%20membeli%20Kode%20Akses%20Resmi%20Aplikasi%20BakeryPreneur." target="_blank" style="color:#2E7D32; font-weight:700; text-decoration:none; display:inline-block; margin-top:4px;">📲 Hubungi Admin via WhatsApp (0819-5394-5148)</a>
     </div>
   </div>
 </div>
 
 <script>
-  // ==================== KONFIGURASI KODE AKSES PEMBELI (1 KODE MASTER) ====================
-  // Anda dapat mengubah teks di dalam tanda kutip di bawah ini kapan saja jika ingin mengganti kode akses:
-  const MASTER_BUYER_ACCESS_CODE = "BAKERY-VIP2026";
+  // ==================== KONFIGURASI KODE AKSES PEMBELI & KODE MASA PERCOBAAN (TRIAL) ====================
+  const MASTER_BUYER_ACCESS_CODE = "BAKERY-VIP2026"; // Kode Resmi Permanen
+  const TRIAL_ACCESS_CODE = "COBA-BAKERY";          // Kode Masa Percobaan (Trial)
+  const TRIAL_DURATION_DAYS = 3;                    // Durasi Trial dalam hari (misal: 3 hari = 72 jam)
+
   const ACCESS_STORAGE_KEY = "cake_bakery_preneur_buyer_unlocked_v1";
+  const TRIAL_START_KEY = "cake_bakery_preneur_trial_start_v1";
+
+  function normalizeAccessCode(str) {
+    return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
+  function getTrialStartTime() {
+    let ts = null;
+    try { ts = localStorage.getItem(TRIAL_START_KEY); } catch (e) {}
+    if (!ts) {
+      try {
+        const m = document.cookie.match(/(?:^|;\s*)bkp_trial_start=([^;]+)/);
+        if (m) ts = m[1];
+      } catch (e) {}
+    }
+    const parsed = Number(ts);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function setTrialStartTime(timestamp) {
+    const val = String(timestamp);
+    try { localStorage.setItem(TRIAL_START_KEY, val); } catch (e) {}
+    try {
+      document.cookie = "bkp_trial_start=" + val + "; max-age=31536000; path=/; SameSite=Lax";
+    } catch (e) {}
+  }
+
+  function unlockGateUI() {
+    const gateEl = document.getElementById('app-access-gate');
+    if (gateEl) {
+      gateEl.classList.add('unlocked');
+      gateEl.style.display = 'none';
+    }
+  }
+
+  function lockGateUI(msg) {
+    const gateEl = document.getElementById('app-access-gate');
+    const errEl = document.getElementById('gate-error-msg');
+    if (gateEl) {
+      gateEl.classList.remove('unlocked');
+      gateEl.style.display = 'flex';
+    }
+    if (errEl && msg) {
+      errEl.textContent = msg;
+    }
+    const banner = document.getElementById('trial-status-banner');
+    if (banner) banner.remove();
+  }
+
+  function renderTrialCountdownBanner(remainingMs) {
+    let banner = document.getElementById('trial-status-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'trial-status-banner';
+      const container = document.querySelector('.container');
+      if (container && container.parentNode) {
+        container.parentNode.insertBefore(banner, container);
+      }
+    }
+    const totalHours = Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60)));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+    const timeText = days > 0 ? (days + " hari " + hours + " jam") : (hours + " jam");
+    banner.innerHTML = `
+      <span>⏳ <strong>Mode Percobaan (Trial):</strong> Sisa waktu aktif <strong>${timeText}</strong>. Data Anda aman.</span>
+      <button type="button" onclick="promptUpgradeFullCode()" style="background:#4A2C2A; color:#FFF; border:none; padding:5px 10px; border-radius:6px; font-size:0.74rem; font-weight:700; cursor:pointer; white-space:nowrap;">🔑 Masukkan Kode Resmi</button>
+    `;
+  }
+
+  function promptUpgradeFullCode() {
+    const errEl = document.getElementById('gate-error-msg');
+    const inputEl = document.getElementById('buyer-access-input');
+    if (inputEl) inputEl.value = '';
+    if (errEl) errEl.textContent = 'Masukkan Kode Akses Pembeli Resmi untuk mengaktifkan permanen.';
+    const gateEl = document.getElementById('app-access-gate');
+    if (gateEl) {
+      gateEl.classList.remove('unlocked');
+      gateEl.style.display = 'flex';
+    }
+  }
 
   function checkBuyerAccessGate() {
     try {
       const savedToken = localStorage.getItem(ACCESS_STORAGE_KEY);
-      if (savedToken === MASTER_BUYER_ACCESS_CODE) {
-        document.getElementById('app-access-gate')?.classList.add('unlocked');
+      if (savedToken && normalizeAccessCode(savedToken) === normalizeAccessCode(MASTER_BUYER_ACCESS_CODE)) {
+        unlockGateUI();
+        const banner = document.getElementById('trial-status-banner');
+        if (banner) banner.remove();
+        return;
+      }
+
+      const trialStart = getTrialStartTime();
+      if (trialStart) {
+        const maxDurationMs = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
+        const elapsed = Date.now() - trialStart;
+        if (elapsed >= 0 && elapsed < maxDurationMs) {
+          unlockGateUI();
+          renderTrialCountdownBanner(maxDurationMs - elapsed);
+        } else {
+          lockGateUI('⏰ Masa percobaan (' + TRIAL_DURATION_DAYS + ' hari) di perangkat ini telah habis. Masukkan Kode Akses Pembeli Resmi untuk melanjutkan.');
+        }
       }
     } catch (e) {}
-  }
-
-  function normalizeAccessCode(str) {
-    return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   }
 
   function verifyBuyerAccessCode(e) {
@@ -7720,27 +7829,64 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     const inputEl = document.getElementById('buyer-access-input');
     const errEl = document.getElementById('gate-error-msg');
     const entered = normalizeAccessCode(inputEl ? inputEl.value : '');
-    const expected = normalizeAccessCode(MASTER_BUYER_ACCESS_CODE);
-    if (entered && entered === expected) {
+    const expectedMaster = normalizeAccessCode(MASTER_BUYER_ACCESS_CODE);
+    const expectedTrial = normalizeAccessCode(TRIAL_ACCESS_CODE);
+
+    // 1. Cek apakah yang dimasukkan adalah Kode Resmi Permanen
+    if (entered && entered === expectedMaster) {
       try {
         localStorage.setItem(ACCESS_STORAGE_KEY, MASTER_BUYER_ACCESS_CODE);
       } catch (err) {}
-      const gateEl = document.getElementById('app-access-gate');
-      if (gateEl) {
-        gateEl.classList.add('unlocked');
-        gateEl.style.display = 'none';
-      }
+      unlockGateUI();
+      const banner = document.getElementById('trial-status-banner');
+      if (banner) banner.remove();
       if (typeof showToast === 'function') {
-        showToast('✓ Akses diterima! Selamat menggunakan Cake & Bakery Preneur.');
+        showToast('✓ Kode Resmi diterima! Aplikasi aktif permanen di perangkat ini.');
       }
-    } else {
-      if (errEl) errEl.textContent = '⚠️ Kode Akses tidak sesuai. Periksa kembali huruf/angkanya.';
-      if (inputEl) inputEl.select();
+      return false;
     }
+
+    // 2. Cek apakah yang dimasukkan adalah Kode Masa Percobaan (Trial)
+    if (entered && entered === expectedTrial) {
+      const existingTrialStart = getTrialStartTime();
+      const maxDurationMs = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
+
+      if (existingTrialStart) {
+        const elapsed = Date.now() - existingTrialStart;
+        if (elapsed >= maxDurationMs || elapsed < 0) {
+          if (errEl) {
+            errEl.textContent = '🚫 Kode Percobaan sudah pernah digunakan dan masa aktif ' + TRIAL_DURATION_DAYS + ' hari di perangkat ini telah berakhir. Silakan masukkan Kode Akses Pembeli Resmi.';
+          }
+          if (inputEl) inputEl.select();
+          return false;
+        } else {
+          unlockGateUI();
+          renderTrialCountdownBanner(maxDurationMs - elapsed);
+          if (typeof showToast === 'function') {
+            showToast('✓ Melanjutkan Masa Percobaan yang masih aktif.');
+          }
+          return false;
+        }
+      } else {
+        const now = Date.now();
+        setTrialStartTime(now);
+        unlockGateUI();
+        renderTrialCountdownBanner(maxDurationMs);
+        if (typeof showToast === 'function') {
+          showToast('✓ Masa Percobaan ' + TRIAL_DURATION_DAYS + ' Hari dimulai!');
+        }
+        return false;
+      }
+    }
+
+    if (errEl) errEl.textContent = '⚠️ Kode Akses tidak sesuai. Periksa kembali huruf/angkanya.';
+    if (inputEl) inputEl.select();
     return false;
   }
 
   checkBuyerAccessGate();
+  // Cek berkala setiap 1 menit agar jika waktu trial habis saat aplikasi sedang dibuka, otomatis mengunci
+  setInterval(checkBuyerAccessGate, 60000);
 
   // 1. Mendaftarkan Service Worker agar aplikasi bisa berjalan Offline penuh
   if ('serviceWorker' in navigator) {
