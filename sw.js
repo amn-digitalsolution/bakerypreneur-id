@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bakery-preneur-v1';
+const CACHE_NAME = 'bakery-preneur-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,7 +8,6 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
-// 1. Saat aplikasi pertama kali diinstal, simpan semua file penting ke memori HP
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -18,7 +17,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. Bersihkan memori versi lama jika Anda mengupdate versi aplikasi (misal ke v2)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
@@ -34,9 +32,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// 3. Strategi Network-First dengan Fallback Offline:
-// Jika ada internet, cek apakah ada update terbaru dari Anda.
-// Jika sedang offline (tidak ada sinyal), langsung buka dari memori HP!
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
