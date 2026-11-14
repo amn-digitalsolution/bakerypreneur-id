@@ -7684,10 +7684,10 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     <div class="gate-logo">🧁</div>
     <div class="gate-title">Cake & Bakery Preneur</div>
     <div class="gate-sub">Sistem Keuangan, Kasir, HPP & Manajemen Dapur<br>Masukkan <strong>Kode Akses Pembeli</strong> untuk membuka aplikasi di perangkat ini.</div>
-    <form id="form-access-gate" onsubmit="verifyBuyerAccessCode(event)">
+    <form id="form-access-gate" onsubmit="return verifyBuyerAccessCode(event)">
       <input type="text" id="buyer-access-input" class="gate-input" placeholder="KETIK KODE AKSES" autocomplete="off" required />
       <div id="gate-error-msg" class="gate-err"></div>
-      <button type="submit" class="btn btn-primary" style="padding:12px; font-size:0.92rem;">🔓 Buka Aplikasi Sekarang</button>
+      <button type="submit" onclick="verifyBuyerAccessCode(event)" class="btn btn-primary" style="padding:12px; font-size:0.92rem;">🔓 Buka Aplikasi Sekarang</button>
     </form>
     <div style="margin-top:16px; padding-top:12px; border-top:1px dashed #E6DCD2; font-size:0.75rem; color:#7A6866;">
       Belum memiliki Kode Akses Resmi?<br>
@@ -7711,16 +7711,25 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     } catch (e) {}
   }
 
+  function normalizeAccessCode(str) {
+    return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
   function verifyBuyerAccessCode(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const inputEl = document.getElementById('buyer-access-input');
     const errEl = document.getElementById('gate-error-msg');
-    const entered = (inputEl?.value || '').trim().toUpperCase();
-    if (entered === MASTER_BUYER_ACCESS_CODE.toUpperCase()) {
+    const entered = normalizeAccessCode(inputEl ? inputEl.value : '');
+    const expected = normalizeAccessCode(MASTER_BUYER_ACCESS_CODE);
+    if (entered && entered === expected) {
       try {
         localStorage.setItem(ACCESS_STORAGE_KEY, MASTER_BUYER_ACCESS_CODE);
       } catch (err) {}
-      document.getElementById('app-access-gate')?.classList.add('unlocked');
+      const gateEl = document.getElementById('app-access-gate');
+      if (gateEl) {
+        gateEl.classList.add('unlocked');
+        gateEl.style.display = 'none';
+      }
       if (typeof showToast === 'function') {
         showToast('✓ Akses diterima! Selamat menggunakan Cake & Bakery Preneur.');
       }
@@ -7728,10 +7737,12 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       if (errEl) errEl.textContent = '⚠️ Kode Akses tidak sesuai. Periksa kembali huruf/angkanya.';
       if (inputEl) inputEl.select();
     }
+    return false;
   }
 
   checkBuyerAccessGate();
- agar aplikasi bisa berjalan Offline penuh
+
+  // 1. Mendaftarkan Service Worker agar aplikasi bisa berjalan Offline penuh
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').catch((err) => {
