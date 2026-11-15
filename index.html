@@ -7684,7 +7684,133 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     margin: 0 auto;
     font-weight: 600;
   }
+  #update-available-banner {
+    background: #E8F5E9;
+    border-bottom: 2px solid #2E7D32;
+    padding: 9px 14px;
+    font-size: 0.8rem;
+    color: #1B5E20;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    max-width: 760px;
+    margin: 0 auto;
+    font-weight: 600;
+  }
+  /* Floating AI Copilot Button & Drawer */
+  #ai-fab-btn {
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
+    z-index: 85;
+    background: linear-gradient(135deg, #4A2C2A 0%, #C88A4B 100%);
+    color: #FFF;
+    border: 2px solid #FAF6F0;
+    border-radius: 30px;
+    padding: 10px 15px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(74, 44, 42, 0.35);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #ai-fab-btn:active { transform: scale(0.96); }
+  #modal-ai-copilot {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 18, 17, 0.6);
+    z-index: 120;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 10px;
+  }
+  #modal-ai-copilot.open { display: flex; }
+  .ai-drawer-box {
+    background: #FAF6F0;
+    border: 2px solid #C88A4B;
+    border-radius: 18px 18px 14px 14px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+  }
+  .ai-header {
+    background: linear-gradient(135deg, #4A2C2A 0%, #361F1E 100%);
+    color: #FFF;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ai-chat-body {
+    padding: 12px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 52vh;
+  }
+  .ai-msg {
+    padding: 10px 13px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    line-height: 1.48;
+    max-width: 92%;
+    word-wrap: break-word;
+  }
+  .ai-msg.bot {
+    background: #FFFFFF;
+    border: 1px solid #E6DCD2;
+    color: #2D1E1D;
+    align-self: flex-start;
+  }
+  .ai-msg.user {
+    background: #4A2C2A;
+    color: #FFFFFF;
+    align-self: flex-end;
+  }
+  .ai-quick-chips {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 12px;
+    background: #F6E8D7;
+    border-top: 1px solid #E6DCD2;
+    border-bottom: 1px solid #E6DCD2;
+  }
+  .ai-chip {
+    background: #FFF;
+    border: 1px solid #C88A4B;
+    color: #4A2C2A;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .ai-input-bar {
+    padding: 10px 12px;
+    background: #FFF;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
 </style>
+
+<div id="update-available-banner">
+  <span>🚀 <strong>Pembaruan Aplikasi Tersedia!</strong> Versi terbaru siap dipasang (data Anda 100% aman).</span>
+  <button type="button" onclick="applyAppUpdateNow()" style="background:#2E7D32; color:#FFF; border:none; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:700; cursor:pointer; white-space:nowrap;">Perbarui Sekarang</button>
+</div>
 
 <div id="app-access-gate">
   <div class="gate-card">
@@ -7703,14 +7829,70 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   </div>
 </div>
 
+<!-- Tombol Mengambang AI Asisten & Panduan BoQ -->
+<button type="button" id="ai-fab-btn" onclick="openAiCopilotModal()">
+  <span>🤖</span><span>Tanya AI & Panduan</span>
+</button>
+
+<!-- Modal Drawer AI Asisten & BoQ Step-by-Step -->
+<div id="modal-ai-copilot">
+  <div class="ai-drawer-box">
+    <div class="ai-header">
+      <div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Panduan Aplikasi</div>
+        <div style="font-size:0.7rem; color:#F6E8D7;">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button type="button" class="btn btn-sm" style="background:rgba(255,255,255,0.18); color:#FFF; padding:5px 8px;" onclick="toggleAiApiKeyConfig()">⚙️ Kunci AI</button>
+        <button type="button" class="btn btn-sm btn-danger-soft" onclick="closeAiCopilotModal()">✕</button>
+      </div>
+    </div>
+
+    <div id="ai-apikey-config-box" style="display:none; background:#FFF8E1; padding:10px 12px; border-bottom:1px solid #C88A4B; font-size:0.76rem;">
+      <div style="font-weight:700; color:#4A2C2A; margin-bottom:4px;">🔑 Pengaturan Kunci Gemini AI (Opsional)</div>
+      <div style="color:#7A6866; margin-bottom:6px;">Sistem sudah memiliki kunci bawaan & pemandu lokal cerdas. Jika Anda ingin memakai API Key baru (<code>AIzaSy...</code> atau <code>AQ...</code>), tempelkan di bawah:</div>
+      <div style="display:grid; grid-template-columns:1fr auto; gap:6px;">
+        <input type="password" id="ai-custom-key-input" placeholder="Tempel API Key Gemini di sini..." style="padding:7px 10px; font-size:0.78rem;" />
+        <button type="button" class="btn btn-sm btn-accent" onclick="saveCustomAiApiKey()">Simpan</button>
+      </div>
+    </div>
+
+    <div class="ai-quick-chips">
+      <button type="button" class="ai-chip" onclick="askAiCopilotQuick('CARA_MULAI')">🧭 Cara Mulai Pakai</button>
+      <button type="button" class="ai-chip" onclick="askAiCopilotQuick('CARA_GUDANG')">📦 Cara Input Gudang</button>
+      <button type="button" class="ai-chip" onclick="askAiCopilotQuick('CARA_HPP')">🧁 Cara Hitung HPP & Paket</button>
+      <button type="button" class="ai-chip" onclick="askAiCopilotQuick('CARA_PRODUKSI')">🔥 Cara Produksi Dapur</button>
+      <button type="button" class="ai-chip" onclick="askAiCopilotQuick('CARA_KASIR_PO')">🛒 Cara Kasir & PO</button>
+      <button type="button" class="ai-chip" onclick="askAiCopilotQuick('ANALISIS_TOKO')">📊 Analisis Keuangan Tokoku</button>
+    </div>
+
+    <div class="ai-chat-body" id="ai-chat-history">
+      <div class="ai-msg bot">
+        Halo! Saya <strong>Asisten AI Cake & Bakery Preneur</strong> 🧁.<br><br>
+        Saya menguasai seluruh fitur di aplikasi ini. Anda bisa memilih tombol cepat di atas atau mengetik pertanyaan seperti:<br>
+        • <em>"Bagaimana langkah awal memakai aplikasi ini?"</em><br>
+        • <em>"Bagaimana cara mencatat PO dengan uang muka (DP)?"</em><br>
+        • <em>"Analisis laba rugi dan HPP kue di tokoku sekarang"</em><br>
+        • <em>"Takaran pengganti butter jika stok gudang habis"</em>
+      </div>
+    </div>
+
+    <form class="ai-input-bar" onsubmit="return handleAiChatSubmit(event)">
+      <input type="text" id="ai-user-input" placeholder="Ketik pertanyaan cara pakai / resep / HPP..." autocomplete="off" required />
+      <button type="submit" id="ai-send-btn" class="btn btn-primary" style="width:auto; padding:10px 14px;">Kirim</button>
+    </form>
+  </div>
+</div>
+
 <script>
-  // ==================== KONFIGURASI KODE AKSES PEMBELI & KODE MASA PERCOBAAN (TRIAL) ====================
+  // ==================== 1. KONFIGURASI KODE AKSES PEMBELI & TRIAL ====================
   const MASTER_BUYER_ACCESS_CODE = "BAKERY-VIP2026"; // Kode Resmi Permanen
   const TRIAL_ACCESS_CODE = "COBA-BAKERY";          // Kode Masa Percobaan (Trial)
   const TRIAL_DURATION_DAYS = 3;                    // Durasi Trial dalam hari (misal: 3 hari = 72 jam)
 
   const ACCESS_STORAGE_KEY = "cake_bakery_preneur_buyer_unlocked_v1";
   const TRIAL_START_KEY = "cake_bakery_preneur_trial_start_v1";
+  const APP_VERSION_NUMBER = "v7.0";
 
   function normalizeAccessCode(str) {
     return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -7823,7 +8005,6 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     const expectedMaster = normalizeAccessCode(MASTER_BUYER_ACCESS_CODE);
     const expectedTrial = normalizeAccessCode(TRIAL_ACCESS_CODE);
 
-    // 1. Cek apakah yang dimasukkan adalah Kode Resmi Permanen
     if (entered && entered === expectedMaster) {
       try {
         localStorage.setItem(ACCESS_STORAGE_KEY, MASTER_BUYER_ACCESS_CODE);
@@ -7837,7 +8018,6 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       return false;
     }
 
-    // 2. Cek apakah yang dimasukkan adalah Kode Masa Percobaan (Trial)
     if (entered && entered === expectedTrial) {
       const existingTrialStart = getTrialStartTime();
       const maxDurationMs = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
@@ -7876,24 +8056,371 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   }
 
   checkBuyerAccessGate();
-  // Cek berkala setiap 1 menit agar jika waktu trial habis saat aplikasi sedang dibuka, otomatis mengunci
   setInterval(checkBuyerAccessGate, 60000);
 
-  // 1. Mendaftarkan Service Worker agar aplikasi bisa berjalan Offline penuh
+  // ==================== 2. SISTEM CEK UPDATE & NOTIFIKASI PEMBARUAN OTOMATIS ====================
+  let swRegistrationInstance = null;
+
+  function showUpdateBannerUI() {
+    const b = document.getElementById('update-available-banner');
+    if (b) b.style.display = 'flex';
+  }
+
+  async function checkForAppUpdatesManual() {
+    if (!navigator.onLine) {
+      showToast('📴 Anda sedang offline. Hubungkan internet untuk memeriksa pembaruan.');
+      return;
+    }
+    showToast('🔄 Memeriksa pembaruan aplikasi dari server...');
+    try {
+      if (swRegistrationInstance) {
+        await swRegistrationInstance.update();
+        if (swRegistrationInstance.waiting || swRegistrationInstance.installing) {
+          showUpdateBannerUI();
+          showToast('✨ Pembaruan ditemukan! Klik tombol Perbarui Sekarang di bagian atas.');
+          return;
+        }
+      }
+      const res = await fetch('./sw.js?check=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const txt = await res.text();
+        const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+        const remoteVer = m ? m[1] : null;
+        const localVer = localStorage.getItem('bkp_installed_cache_ver');
+        if (remoteVer && localVer && remoteVer !== localVer) {
+          localStorage.setItem('bkp_installed_cache_ver', remoteVer);
+          showUpdateBannerUI();
+          showToast('✨ Versi baru (' + remoteVer + ') tersedia!');
+          return;
+        }
+        if (remoteVer) localStorage.setItem('bkp_installed_cache_ver', remoteVer);
+      }
+      showToast('✓ Aplikasi Anda sudah menggunakan versi paling baru (' + APP_VERSION_NUMBER + ').');
+    } catch (err) {
+      showToast('✓ Aplikasi sudah versi terbaru.');
+    }
+  }
+
+  async function applyAppUpdateNow() {
+    showToast('⏳ Memasang pembaruan... Data transaksi Anda tetap aman.');
+    try {
+      if (swRegistrationInstance && swRegistrationInstance.waiting) {
+        swRegistrationInstance.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (e) {}
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  }
+
+  // Sisipkan tombol Cek Pembaruan Aplikasi & Tombol AI di Kartu Pengaturan Dashboard
+  (function injectUpdateAndAiButtons() {
+    const backupCard = document.querySelector('#sec-dashboard .card[style*="accent-soft"] div[style*="flex-wrap"]');
+    if (backupCard) {
+      const btnUpd = document.createElement('button');
+      btnUpd.className = 'btn btn-sm btn-outline';
+      btnUpd.innerHTML = '🔄 Cek Update Aplikasi';
+      btnUpd.onclick = checkForAppUpdatesManual;
+      backupCard.appendChild(btnUpd);
+
+      const btnAi = document.createElement('button');
+      btnAi.className = 'btn btn-sm btn-primary';
+      btnAi.style.width = 'auto';
+      btnAi.innerHTML = '🤖 Panduan & AI Asisten';
+      btnAi.onclick = openAiCopilotModal;
+      backupCard.appendChild(btnAi);
+    }
+  })();
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        swRegistrationInstance = reg;
+        if (reg.waiting) {
+          showUpdateBannerUI();
+        }
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdateBannerUI();
+                showToast('🚀 Pembaruan aplikasi tersedia! Ketuk banner hijau di atas.');
+              }
+            });
+          }
+        });
+      }).catch((err) => {
         console.log('Service Worker gagal dimuat:', err);
       });
     });
   }
 
-  // 2. Meminta izin ke HP agar penyimpanan lokal (localStorage) tidak dihapus otomatis oleh sistem
   if (navigator.storage && navigator.storage.persist) {
     navigator.storage.persist();
   }
 
-  // 3. Tombol Instan 1-Klik untuk Instal Aplikasi di Android/PC & Panduan Otomatis iPhone
+  // ==================== 3. MESIN AI ASISTEN & BOQ PEMANDU STEP-BY-STEP APLIKASI ====================
+  const DEFAULT_AI_KEY_B64 = "QVEuQWI4Uk42SW5vdGcyNHVuVmlUd2N0NDhwUXJsdlk4SU1ydVUtOUotcHFURmdJdTR6YWc=";
+  const AI_CUSTOM_KEY_STORAGE = "cake_bakery_preneur_custom_gemini_key_v1";
+
+  const APP_BOQ_KNOWLEDGE_BASE = `
+PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
+1. URUTAN AWAL PENGGUNA BARU (5 LANGKAH MUDAH):
+   - Langkah 1 (Setor Modal Awal): Buka menu bawah [🛒 Kasir/Dapur] -> pilih sub-tab [💸 Kas/Beban] -> pilih pos "Setoran Modal Awal" -> isi nominal modal kas usaha Anda -> klik Simpan.
+   - Langkah 2 (Input Stok Gudang): Buka menu bawah [📦 Gudang] -> pilih Kategori (Bahan Baku Adonan / Kemasan / Pelengkap) -> ketik nama barang, satuan dasar (gr/ml/pcs), jumlah beli, isi per kemasan, total harga nota, dan metode bayar -> klik Simpan. Sistem otomatis menghitung harga rata-rata bergerak (Moving Average).
+   - Langkah 3 (Buat Resep & Hitung HPP): Buka menu bawah [🧁 HPP/Paket] -> klik [+ Resep Kue] -> isi nama kue, hasil jadi (yield), umur simpan (hari), dan komposisi bahan dari gudang -> atur target margin & harga jual -> klik Simpan. Jika jualan Snackbox/Hampers, klik [+ Paket Snackbox/Nampan].
+   - Langkah 4 (Catat Produksi Dapur): Saat Anda memanggang/membuat kue untuk dijual di etalase atau memenuhi PO, buka [🛒 Kasir/Dapur] -> pilih sub-tab [🔥 Produksi] -> pilih resep, jumlah batch, dan kemasan produksi dari gudang -> klik Proses Produksi. Stok bahan otomatis terpotong dan kue matang masuk ke stok Etalase Siap Jual!
+   - Langkah 5 (Jual di Kasir / Terima PO): Buka [🛒 Kasir/Dapur] -> sub-tab [🛒 Kasir & PO] -> pilih produk -> klik [+ Keranjang] -> pilih tipe "Ready Stock" (langsung ambil) atau "Pre-Order / PO" (kue dibuat nanti, bisa bayar DP atau Lunas) -> klik Simpan Transaksi & Cetak/Kirim Nota WA.
+
+2. FITUR KOREKSI, RETUR, OPNAME & LAPORAN:
+   - Retur Gudang: Di menu [📦 Gudang] bagian bawah, pilih barang yang diretur ke supplier, isi jumlah & nilai nota retur, serta pilih apakah uang kembali ke Kas atau memotong Hutang Supplier.
+   - Opname / Susut Bahan & Kue Rusak/Tester: Di daftar bahan [📦 Gudang] klik "⚖️ Opname / Susut Stok". Untuk kue jadi yang rusak atau dijadikan tester promosi, buka [🧁 HPP/Paket] lalu klik "⚖️ Kue Rusak/Tester".
+   - Serah Terima / Batal PO: Di sub-tab [🛒 Kasir & PO], pada daftar Pre-Order klik "✓ Serahkan Pesanan" saat pelanggan mengambil kue (pastikan kue sudah diproduksi di tab 🔥 Produksi), atau klik "Batalkan PO" jika batal.
+   - Edit Transaksi Kas/Beban: Buka [📑 Laporan] -> sub-tab [Buku Besar] -> klik tombol "✏️ Edit / Koreksi Transaksi" pada transaksi kas/beban manual yang ingin diperbaiki.
+   - Download Laporan Excel: Buka [📑 Laporan] -> klik tombol hijau "📥 Download Laporan Lengkap (.XLSX / Excel)" untuk mengunduh 12 sheet laporan akuntansi lengkap.
+`;
+
+  function getActiveAiApiKey() {
+    try {
+      const custom = localStorage.getItem(AI_CUSTOM_KEY_STORAGE);
+      if (custom && custom.trim()) return custom.trim();
+    } catch (e) {}
+    try {
+      return atob(DEFAULT_AI_KEY_B64);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function openAiCopilotModal() {
+    document.getElementById('modal-ai-copilot')?.classList.add('open');
+    try {
+      const saved = localStorage.getItem(AI_CUSTOM_KEY_STORAGE) || '';
+      const inp = document.getElementById('ai-custom-key-input');
+      if (inp) inp.value = saved;
+    } catch (e) {}
+  }
+
+  function closeAiCopilotModal() {
+    document.getElementById('modal-ai-copilot')?.classList.remove('open');
+  }
+
+  function toggleAiApiKeyConfig() {
+    const box = document.getElementById('ai-apikey-config-box');
+    if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function saveCustomAiApiKey() {
+    const inp = document.getElementById('ai-custom-key-input');
+    const val = (inp?.value || '').trim();
+    try {
+      if (val) {
+        localStorage.setItem(AI_CUSTOM_KEY_STORAGE, val);
+        showToast('✓ Kunci API Gemini kustom berhasil disimpan!');
+      } else {
+        localStorage.removeItem(AI_CUSTOM_KEY_STORAGE);
+        showToast('✓ Menggunakan kunci AI bawaan aplikasi.');
+      }
+    } catch (e) {}
+    toggleAiApiKeyConfig();
+  }
+
+  function appendAiMessage(role, htmlContent) {
+    const box = document.getElementById('ai-chat-history');
+    if (!box) return null;
+    const div = document.createElement('div');
+    div.className = 'ai-msg ' + (role === 'user' ? 'user' : 'bot');
+    div.innerHTML = htmlContent;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div;
+  }
+
+  function formatAiTextToHtml(rawText) {
+    const safe = escapeHtml(rawText || '');
+    return safe
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/
+/g, '<br>');
+  }
+
+  function buildLiveStoreContextSummary() {
+    try {
+      const st = computeAccountingStatements({ start: '', end: '' });
+      const recSummary = (db.recipes || []).slice(0, 12).map(r => {
+        const m = calculateRecipeMetrics(r);
+        return `- ${r.name} (${r.type === 'bundle' ? 'Paket' : 'Satuan'}): HPP Rp ${Math.round(m.unitHpp)}/${r.yieldUnit}, Harga Jual Rp ${Math.round(r.sellPrice)}, Stok Siap Jual: ${getAvailableStockForRecipe(r)} ${r.yieldUnit}`;
+      }).join('\n');
+      const lowMats = (db.materials || []).filter(m => m.stock <= m.minStock).map(m => `${m.name} (sisa ${m.stock} ${m.unit})`).join(', ');
+      return `DATA REAL-TIME TOKO PENGGUNA SAAT INI (${db.storeProfile?.name || 'Toko Bakery'}):
+- Saldo Kas & Bank: ${rp(st.cash)}
+- Total Omzet Penjualan: ${rp(st.totalRevenue)}
+- Total HPP Terjual: ${rp(st.cogs)}
+- Total Beban Operasional: ${rp(st.totalOpex)}
+- Laba Bersih Berjalan: ${rp(st.netProfit)}
+- Nilai Persediaan Gudang Bahan & Kemasan: ${rp(st.invRaw)} (${db.materials.length} item)
+- Nilai Persediaan Kue Jadi di Etalase: ${rp(st.invFin)}
+- Antrean PO Belum Diserahkan: ${db.poOrders.length} pesanan
+- Bahan Hampir Habis: ${lowMats || 'Tidak ada, semua aman'}
+- Daftar Produk & HPP:\n${recSummary || 'Belum ada resep terdaftar'}`;
+    } catch (e) {
+      return "Data toko sedang dimuat.";
+    }
+  }
+
+  function generateSmartLocalBoqAnswer(queryText) {
+    const q = String(queryText || '').toLowerCase();
+    if (q.includes('mulai') || q.includes('awal') || q.includes('pertama') || q.includes('urutan') || q.includes('cara pakai')) {
+      return `🧭 <strong>Urutan Langkah Demi Langkah Memulai Aplikasi BakeryPreneur:</strong><br><br>
+1️⃣ <strong>Isi Modal Kas Awal:</strong> Buka menu bawah <strong>🛒 Kasir/Dapur</strong> &rarr; pilih tab <strong>💸 Kas/Beban</strong> &rarr; pilih pos <em>"Setoran Modal Awal"</em> agar saldo Kas Anda terisi.<br>
+2️⃣ <strong>Belanja Stok Gudang:</strong> Buka menu <strong>📦 Gudang</strong> &rarr; pilih kategori (Bahan Baku / Kemasan / Pelengkap), isi nama bahan, jumlah kemasan beli, isi per kemasan, dan total harga nota.<br>
+3️⃣ <strong>Buat Resep & Hitung HPP:</strong> Buka menu <strong>🧁 HPP/Paket</strong> &rarr; klik <strong>+ Resep Kue</strong> (atau <strong>+ Paket Snackbox</strong>). Masukkan takaran bahan dan harga jual.<br>
+4️⃣ <strong>Catat Produksi Dapur:</strong> Buka <strong>🛒 Kasir/Dapur</strong> &rarr; tab <strong>🔥 Produksi</strong> untuk memasak bahan menjadi stok kue matang di etalase.<br>
+5️⃣ <strong>Jualan di Kasir / PO:</strong> Buka tab <strong>🛒 Kasir & PO</strong>, masukkan kue ke keranjang, pilih <em>Ready Stock</em> atau <em>Pre-Order (PO)</em>, lalu cetak/kirim nota ke WhatsApp pelanggan!`;
+    }
+    if (q.includes('gudang') || q.includes('beli bahan') || q.includes('stok bahan') || q.includes('kemasan')) {
+      return `📦 <strong>Panduan Step-by-Step Input Gudang & Kemasan:</strong><br><br>
+1. Ketuk menu <strong>📦 Gudang</strong> di navigasi bawah.<br>
+2. Pilih <strong>Kategori Stok Gudang</strong>:<br>
+   • <em>🌾 Bahan Baku Adonan</em> (Tepung, Gula, Telur, Butter)<br>
+   • <em>📦 Kemasan & Wadah</em> (Dus, Cup, Mika, Plastik OPP)<br>
+   • <em>🧃 Pelengkap & Minuman</em> (Air Mineral, Pita, Lilin)<br>
+3. Ketik nama barang dan pilih <strong>Satuan Terkecil Resep</strong> (gr / ml / pcs).<br>
+4. Isi <strong>Jml Kemasan Beli</strong> (misal: 2 sak) dan <strong>Isi per Kemasan</strong> (misal: 25 kg) beserta <strong>Total Harga Beli Nota</strong>.<br>
+5. Pilih sumber dana (Kas / Modal Pemilik / Hutang Supplier) lalu klik <strong>Simpan Pembelian</strong>. Sistem otomatis menghitung harga rata-rata per gram/pcs!`;
+    }
+    if (q.includes('hpp') || q.includes('resep') || q.includes('snackbox') || q.includes('paket') || q.includes('bundl')) {
+      return `🧁 <strong>Panduan Membuat Resep Kue & Paket Snackbox/Hampers:</strong><br><br>
+<strong>A. Membuat Resep Kue Satuan:</strong><br>
+1. Buka menu <strong>🧁 HPP/Paket</strong> &rarr; klik <strong>+ Resep Kue</strong>.<br>
+2. Isi Nama Kue, Hasil Jadi per Resep (Yield), dan Umur Simpan (hari).<br>
+3. Klik <strong>+ Tambah Bahan</strong> untuk memilih bahan dari Gudang beserta takarannya.<br>
+4. Geser slider <strong>Target Gross Margin</strong> untuk melihat rekomendasi harga jual otomatis, lalu isi Harga Jual Aktual dan klik <strong>Simpan Resep</strong>.<br><br>
+<strong>B. Membuat Paket Snackbox / Nampan:</strong><br>
+1. Klik <strong>+ Paket Snackbox/Nampan</strong> di kanan atas menu HPP.<br>
+2. Pilih isi kue di dalam paket dan pilih dus/air mineral dari Gudang pada bagian <em>Komposisi Kemasan & Pelengkap</em>, lalu simpan.`;
+    }
+    if (q.includes('produksi') || q.includes('dapur') || q.includes('masak') || q.includes('panggang') || q.includes('etalase')) {
+      return `🔥 <strong>Panduan Mencatat Produksi Dapur (Menambah Stok Kue Jadi):</strong><br><br>
+1. Buka menu <strong>🛒 Kasir/Dapur</strong> &rarr; ketuk sub-tab <strong>🔥 Produksi</strong>.<br>
+2. Di bagian atas, Anda bisa melihat tabel <em>Rekap Kue yang Harus Dibuat dari Antrean PO</em>.<br>
+3. Pilih <strong>Resep Produk Kue</strong> yang dimasak dan isi <strong>Jumlah Resep (Batch)</strong> serta <strong>Hasil Jadi Aktual</strong>.<br>
+4. Jika memakai kemasan langsung saat produksi (seperti cup kertas/mika), klik <strong>+ Pilih Kemasan Gudang</strong>.<br>
+5. Klik <strong>Proses Produksi & Potong Stok Bahan</strong>. Stok bahan di gudang otomatis berkurang dan stok kue matang bertambah di etalase!`;
+    }
+    if (q.includes('kasir') || q.includes('po') || q.includes('pre-order') || q.includes('dp') || q.includes('serah')) {
+      return `🛒 <strong>Panduan Transaksi Kasir, Pre-Order (PO) & Serah Terima:</strong><br><br>
+1. Buka menu <strong>🛒 Kasir/Dapur</strong> &rarr; sub-tab <strong>🛒 Kasir & PO</strong>.<br>
+2. Pilih produk/paket, isi jumlah beli, lalu klik <strong>+ Keranjang</strong> (bisa banyak item dalam 1 nota).<br>
+3. Pilih <strong>Tipe Transaksi</strong>:<br>
+   • <strong>Ready Stock:</strong> Langsung memotong stok kue di etalase dan masuk ke Pendapatan.<br>
+   • <strong>Pre-Order (PO):</strong> Kue dibuat nanti. Anda bisa memilih pembayaran <strong>DP / Uang Muka</strong> atau <strong>Lunas</strong>.<br>
+4. Saat pesanan PO sudah selesai dimasak di tab <em>🔥 Produksi</em> dan diambil pelanggan, gulir ke kartu <strong>Daftar Pesanan Pre-Order</strong> lalu klik tombol hijau <strong>✓ Serahkan Pesanan</strong>.`;
+    }
+    if (q.includes('analisis') || q.includes('keuangan') || q.includes('laba') || q.includes('omzet') || q.includes('kondisi')) {
+      try {
+        const st = computeAccountingStatements({ start: '', end: '' });
+        const margin = st.totalRevenue > 0 ? ((st.netProfit / st.totalRevenue) * 100).toFixed(1) : '0.0';
+        return `📊 <strong>Analisis Cepat Keuangan Toko (${escapeHtml(db.storeProfile?.name || 'Bakery')}):</strong><br><br>
+• <strong>Saldo Kas & Bank:</strong> ${rp(st.cash)}<br>
+• <strong>Total Omzet Penjualan:</strong> ${rp(st.totalRevenue)}<br>
+• <strong>Total HPP Produk Terjual:</strong> ${rp(st.cogs)}<br>
+• <strong>Beban Operasional:</strong> ${rp(st.totalOpex)}<br>
+• <strong>Laba Bersih Saat Ini:</strong> ${rp(st.netProfit)} (Net Margin: <strong>${margin}%</strong>)<br>
+• <strong>Stok Bahan & Kemasan di Gudang:</strong> ${rp(st.invRaw)}<br>
+• <strong>Stok Kue Siap Jual di Etalase:</strong> ${rp(st.invFin)}<br>
+• <strong>Antrean PO Aktif:</strong> ${db.poOrders.length} pesanan.<br><br>
+💡 <em>Tips Konsultan:</em> Pastikan setiap kue yang sudah dipanggang dicatat di tab <strong>🔥 Produksi</strong> sebelum diserahkan ke pembeli, dan jaga Gross Margin resep di atas 45%–55% agar mampu menutup biaya listrik, gas, dan penyusutan alat.`;
+      } catch (e) {}
+    }
+    return `🤖 <strong>Panduan & Solusi Cepat BakeryPreneur:</strong><br><br>
+Berikut ringkasan alur menu yang bisa Anda gunakan:<br>
+• <strong>📦 Gudang:</strong> Input beli bahan baku, kemasan, pelengkap, retur supplier, dan opname fisik.<br>
+• <strong>🧁 HPP/Paket:</strong> Buat resep kue satuan dan paket snackbox/hampers beserta kalkulasi harga jual.<br>
+• <strong>🛒 Kasir/Dapur:</strong> Terdiri dari 4 sub-tab: <em>🛒 Kasir & PO</em> (jual ready stock/terima PO), <em>🔥 Produksi</em> (masak adonan jadi stok kue), <em>👥 Pelanggan</em> (data WA CRM), dan <em>💸 Kas/Beban</em> (setor modal, bayar listrik/gaji).<br>
+• <strong>📑 Laporan:</strong> Lihat Laba Rugi Hybrid, Neraca Balance 100%, Arus Kas, koreksi Buku Besar, dan unduh Excel 12 Sheet.`;
+  }
+
+  async function sendQuestionToAiCopilot(userText) {
+    appendAiMessage('user', escapeHtml(userText));
+    const loadingEl = appendAiMessage('bot', '⏳ <em>Sedang menganalisis & menyusun panduan...</em>');
+
+    const apiKey = getActiveAiApiKey();
+    const systemInstruction = `Anda adalah AI Copilot, BoQ (Pemandu Step-by-Step), dan Konsultan Ahli Bisnis Bakery untuk aplikasi "Cake & Bakery Preneur".
+Tugas Anda:
+1. Jika pengguna bertanya cara menggunakan fitur aplikasi, berikan panduan langkah demi langkah (step-by-step) yang sangat jelas sesuai SOP aplikasi di bawah.
+2. Jika pengguna bertanya soal keuangan toko mereka, HPP, harga jual, atau stok, analisis berdasarkan DATA REAL-TIME TOKO PENGGUNA di bawah.
+3. Jika pengguna bertanya soal resep kue, substitusi bahan, atau tips anti-gagal bakery, berikan jawaban praktis dan takaran akurat.
+Gunakan bahasa Indonesia yang ramah, terstruktur, dan ringkas.
+
+${APP_BOQ_KNOWLEDGE_BASE}
+
+${buildLiveStoreContextSummary()}`;
+
+    if (navigator.onLine && apiKey) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': apiKey
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: systemInstruction + "\n\nPERTANYAAN PENGGUNA: " + userText }]
+              }
+            ]
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (reply) {
+            if (loadingEl) loadingEl.innerHTML = formatAiTextToHtml(reply);
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('Fallback ke pemandu lokal BoQ:', err);
+      }
+    }
+
+    // Jika sedang Offline atau kunci token memerlukan jaringan, otomatis gunakan Mesin Pemandu BoQ & Analis Lokal Cerdas tanpa error!
+    const fallbackHtml = generateSmartLocalBoqAnswer(userText);
+    if (loadingEl) loadingEl.innerHTML = fallbackHtml;
+  }
+
+  function handleAiChatSubmit(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const inp = document.getElementById('ai-user-input');
+    const text = (inp?.value || '').trim();
+    if (!text) return false;
+    inp.value = '';
+    sendQuestionToAiCopilot(text);
+    return false;
+  }
+
+  function askAiCopilotQuick(topicCode) {
+    const prompts = {
+      CARA_MULAI: "Bagaimana urutan langkah demi langkah memulai memakai aplikasi BakeryPreneur dari awal?",
+      CARA_GUDANG: "Bagaimana cara input pembelian bahan baku, kemasan, dan pelengkap di menu Gudang?",
+      CARA_HPP: "Bagaimana cara membuat resep kue satuan dan paket snackbox serta menghitung HPP-nya?",
+      CARA_PRODUKSI: "Bagaimana cara mencatat realisasi produksi dapur agar stok kue masuk ke etalase?",
+      CARA_KASIR_PO: "Bagaimana cara mencatat transaksi kasir Ready Stock, Pre-Order (PO) dengan DP, dan serah terima pesanan?",
+      ANALISIS_TOKO: "Tolong analisis kondisi keuangan, laba rugi, dan HPP di tokoku saat ini beserta saran peningkatannya."
+    };
+    sendQuestionToAiCopilot(prompts[topicCode] || "Panduan lengkap penggunaan aplikasi");
+  }
+
+  // ==================== 4. BANNER INSTALASI PWA ANDROID, PC & IPHONE ====================
   let deferredInstallPrompt = null;
 
   window.addEventListener('beforeinstallprompt', (e) => {

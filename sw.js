@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bakery-preneur-v5';
+const CACHE_NAME = 'bakery-preneur-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -30,6 +30,12 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
