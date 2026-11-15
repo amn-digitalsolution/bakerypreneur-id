@@ -1,11 +1,11 @@
-const CACHE_NAME = 'bakery-preneur-v15';
+const CACHE_NAME = 'bakery-preneur-v16';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+  'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'
 ];
 
 self.addEventListener('install', (event) => {

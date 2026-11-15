@@ -8,7 +8,7 @@
   <title>Cake & Bakery Preneur — Sistem Keuangan, Kasir, HPP & Cloud</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <style>
     :root {
       --primary: #4A2C2A;       /* Cokelat Espresso */
@@ -6285,6 +6285,208 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   }
 
   // ==================== EKSPOR MICROSOFT EXCEL (.XLSX) ====================
+  // ==================== MESIN EKSPOR EXCEL PROFESIONAL (AUTO-WIDTH, BORDERS, WARNA & FORMAT RUPIAH) ====================
+  function styleAndFormatWorksheet(ws, options = {}) {
+    if (!ws || !ws['!ref']) return ws;
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const numCols = range.e.c + 1;
+    const headerRowIdx = options.headerRow ?? 0;
+    const isFinancialStatement = Boolean(options.isFinancialStatement);
+    const titleBannerRows = options.titleBannerRows || 0;
+
+    const borderThin = {
+      top: { style: 'thin', color: { rgb: 'D6C7B8' } },
+      bottom: { style: 'thin', color: { rgb: 'D6C7B8' } },
+      left: { style: 'thin', color: { rgb: 'D6C7B8' } },
+      right: { style: 'thin', color: { rgb: 'D6C7B8' } }
+    };
+    const borderTotal = {
+      top: { style: 'thin', color: { rgb: '4A2C2A' } },
+      bottom: { style: 'double', color: { rgb: '4A2C2A' } },
+      left: { style: 'thin', color: { rgb: 'D6C7B8' } },
+      right: { style: 'thin', color: { rgb: 'D6C7B8' } }
+    };
+
+    // Merge banner judul di bagian atas untuk laporan keuangan
+    if (titleBannerRows > 0 && numCols > 1) {
+      ws['!merges'] = ws['!merges'] || [];
+      ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } });
+    }
+
+    const colMaxLen = new Array(numCols).fill(12);
+    ws['!rows'] = [];
+
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      let firstCellVal = '';
+      const firstCellRef = XLSX.utils.encode_cell({ r: R, c: 0 });
+      if (ws[firstCellRef] && ws[firstCellRef].v !== undefined) {
+        firstCellVal = String(ws[firstCellRef].v).trim();
+      }
+
+      const upperFirst = firstCellVal.toUpperCase();
+      const isSectionRow = isFinancialStatement && R > headerRowIdx && (
+        upperFirst.startsWith('PENDAPATAN USAHA') ||
+        upperFirst.startsWith('HARGA POKOK') ||
+        upperFirst.startsWith('RINCIAN BEBAN') ||
+        upperFirst.startsWith('ASET (HARTA)') ||
+        upperFirst.startsWith('KEWAJIBAN & MODAL') ||
+        upperFirst.startsWith('ARUS KAS AKTIVITAS') ||
+        upperFirst.startsWith('REKONSILIASI ')
+      );
+      const isTotalRow = R > headerRowIdx && (
+        upperFirst.startsWith('TOTAL ') ||
+        upperFirst.startsWith('LABA KOTOR') ||
+        upperFirst.startsWith('LABA / (RUGI) BERSIH') ||
+        upperFirst.startsWith('SALDO KAS AKHIR') ||
+        upperFirst.startsWith('ARUS KAS BERSIH') ||
+        upperFirst.startsWith('SELISIH')
+      );
+      const isGrandHighlight = upperFirst.startsWith('LABA / (RUGI) BERSIH') ||
+        upperFirst.startsWith('TOTAL ASET') ||
+        upperFirst.startsWith('TOTAL KEWAJIBAN & MODAL') ||
+        upperFirst.startsWith('SALDO KAS AKHIR');
+
+      // Atur tinggi baris agar lega dan mudah dibaca
+      if (R === 0 && titleBannerRows > 0) ws['!rows'][R] = { hpt: 28 };
+      else if (R === headerRowIdx) ws['!rows'][R] = { hpt: 24 };
+      else if (isTotalRow || isSectionRow) ws['!rows'][R] = { hpt: 21 };
+      else ws['!rows'][R] = { hpt: 19 };
+
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        let cell = ws[cellRef];
+
+        // Pastikan setiap sel di dalam tabel memiliki objek agar border tidak bolong
+        if (!cell) {
+          if (R >= headerRowIdx && firstCellVal !== '') {
+            cell = { t: 's', v: '' };
+            ws[cellRef] = cell;
+          } else {
+            continue;
+          }
+        }
+
+        // Hitung panjang karakter untuk Auto-Fit Lebar Kolom (abaikan baris judul yang di-merge)
+        if (!(R === 0 && titleBannerRows > 0 && C === 0)) {
+          let textLen = 0;
+          if (cell.t === 'n') {
+            const formatted = 'Rp ' + Math.abs(Math.round(Number(cell.v) || 0)).toLocaleString('id-ID');
+            textLen = formatted.length + 5;
+          } else {
+            textLen = String(cell.v ?? '').length + 3;
+          }
+          if (textLen > colMaxLen[C]) colMaxLen[C] = Math.min(textLen, 58);
+        }
+
+        // 1. Baris Judul Utama Laporan (Row 0)
+        if (R === 0 && titleBannerRows > 0) {
+          cell.s = {
+            font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { fgColor: { rgb: '4A2C2A' } },
+            alignment: { vertical: 'center', horizontal: 'left', indent: 1 }
+          };
+          continue;
+        }
+
+        // 2. Baris Metadata Periode / Tanggal Cetak (di bawah judul, di atas tabel)
+        if (titleBannerRows > 0 && R > 0 && R < headerRowIdx) {
+          cell.s = {
+            font: { name: 'Calibri', sz: 10, bold: C === 0, italic: C > 0, color: { rgb: '4A2C2A' } },
+            fill: { fgColor: { rgb: 'FAF6F0' } },
+            alignment: { vertical: 'center', horizontal: 'left' }
+          };
+          continue;
+        }
+
+        // 3. Baris Header Kolom Tabel
+        if (R === headerRowIdx) {
+          cell.s = {
+            font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { fgColor: { rgb: '6D4340' } },
+            border: borderThin,
+            alignment: { vertical: 'center', horizontal: C === 0 ? 'left' : 'center', wrapText: true }
+          };
+          continue;
+        }
+
+        // 4. Baris Sub-Judul Seksi (Laba Rugi / Neraca / Arus Kas)
+        if (isSectionRow) {
+          cell.s = {
+            font: { name: 'Calibri', sz: 10, bold: true, color: { rgb: '4A2C2A' } },
+            fill: { fgColor: { rgb: 'F6E8D7' } },
+            border: borderThin,
+            alignment: { vertical: 'center', horizontal: 'left' }
+          };
+          continue;
+        }
+
+        // 5. Baris Data Biasa & Baris Total
+        const isNumeric = cell.t === 'n';
+        const colHeaderRef = XLSX.utils.encode_cell({ r: headerRowIdx, c: C });
+        const colHeaderName = String(ws[colHeaderRef]?.v || '').toLowerCase();
+        const isCurrencyCol = isFinancialStatement ||
+          colHeaderName.includes('rp') ||
+          colHeaderName.includes('nominal') ||
+          colHeaderName.includes('harga') ||
+          colHeaderName.includes('nilai') ||
+          colHeaderName.includes('hpp') ||
+          colHeaderName.includes('biaya') ||
+          colHeaderName.includes('laba') ||
+          colHeaderName.includes('debit') ||
+          colHeaderName.includes('kredit') ||
+          colHeaderName.includes('belanja') ||
+          colHeaderName.includes('waste') ||
+          colHeaderName.includes('kemasan') ||
+          colHeaderName.includes('tenaga_kerja') ||
+          colHeaderName.includes('overhead');
+        const isPctCol = colHeaderName.includes('persen') || colHeaderName.includes('%');
+
+        let numFmt = undefined;
+        if (isNumeric) {
+          if (isPctCol) {
+            numFmt = '0.0"%"';
+          } else if (isCurrencyCol) {
+            // Format Akuntansi Profesional: positif pakai titik ribuan, negatif dalam kurung (169,900), nol tampil "-"
+            numFmt = '#,##0;(#,##0);"-"';
+          } else {
+            numFmt = '#,##0.##';
+          }
+        }
+
+        const isNegNumber = isNumeric && Number(cell.v) < 0;
+        const rowBgColor = isGrandHighlight
+          ? 'E8F5E9'
+          : isTotalRow
+            ? 'F6E8D7'
+            : (R % 2 === 1 ? 'FFFFFF' : 'FDFBF7');
+
+        cell.s = {
+          font: {
+            name: 'Calibri',
+            sz: isGrandHighlight ? 11 : 10,
+            bold: isTotalRow || isGrandHighlight,
+            color: { rgb: isNegNumber ? 'C62828' : (isGrandHighlight ? '1B5E20' : '2D1E1D') }
+          },
+          fill: { fgColor: { rgb: rowBgColor } },
+          border: isTotalRow ? borderTotal : borderThin,
+          alignment: {
+            vertical: 'center',
+            horizontal: isNumeric ? 'right' : 'left',
+            wrapText: false
+          }
+        };
+        if (numFmt) cell.z = numFmt;
+      }
+    }
+
+    // Terapkan lebar kolom otomatis yang lega agar tidak ada teks yang terpotong!
+    ws['!cols'] = colMaxLen.map((len, idx) => ({
+      wch: idx === 0 && isFinancialStatement ? Math.max(len, 48) : Math.max(len + 3, 15)
+    }));
+
+    return ws;
+  }
+
   function exportToExcel() {
     if (typeof XLSX === 'undefined') {
       alert('Modul Excel sedang dimuat. Pastikan perangkat terhubung internet sebentar.');
@@ -6298,213 +6500,244 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       ? `${st.reportStart || 'Awal data'} s.d. ${st.reportEnd || 'saldo terbaru'}`
       : 'Semua tanggal transaksi';
 
+    // 1. SHEET LABA RUGI
     const plRows = [
-      [`LAPORAN LABA RUGI — ${db.storeProfile.name.toUpperCase()}`],
-      ['Periode', selectedPeriodLabel],
+      [`LAPORAN LABA RUGI — ${db.storeProfile.name.toUpperCase()}`, ''],
+      ['Periode Laporan', selectedPeriodLabel],
       ['Tanggal Cetak', todayStr()],
-      [],
-      ['Keterangan Pos', 'Nominal (Rp)'],
-      ['Pendapatan Penjualan', st.salesRev],
-      ['Pendapatan Lain-Lain', st.otherRev],
+      ['', ''],
+      ['Keterangan Pos Laba Rugi', 'Nominal (Rp)'],
+      ['PENDAPATAN USAHA', ''],
+      ['Pendapatan Penjualan Kue & Paket', st.salesRev],
+      ['Pendapatan Lain-Lain (Koreksi Stok)', st.otherRev],
       ['Pendapatan Selisih Pembulatan', st.roundingRevenue],
       ['Pendapatan Biaya Pembatalan PO', st.cancellationFeeRevenue],
-      ['TOTAL PENDAPATAN', st.totalRevenue],
-      ['Pemakaian Bahan Baku Adonan (Produksi Dapur)', st.prodRawMatUsed],
-      ['Pemakaian Kemasan Produksi (Dari Gudang)', st.prodPackUsed],
-      ['Total Nilai Produksi Masuk Etalase', st.totalProdCostPeriod],
-      ['Nilai Stok Produk Jadi Masih di Etalase (Belum Terjual)', -st.invFin],
+      ['TOTAL PENDAPATAN USAHA', st.totalRevenue],
+      ['', ''],
+      ['HARGA POKOK PRODUKSI & PENJUALAN (HPP)', ''],
+      ['  • Pemakaian Bahan Baku Adonan (Produksi Dapur)', st.prodRawMatUsed],
+      ['  • Pemakaian Kemasan Produksi (Dari Gudang)', st.prodPackUsed],
+      ['  Total Nilai Produksi Masuk Etalase', st.totalProdCostPeriod],
+      ['  • Nilai Stok Produk Jadi Masih di Etalase (Belum Terjual)', -st.invFin],
       ['HPP Produk & Paket Terjual (Pengurang Omzet)', -st.cogs],
-      ['LABA KOTOR', st.grossProfit],
-      [],
+      ['LABA KOTOR (GROSS PROFIT)', st.grossProfit],
+      ['', ''],
       ['RINCIAN BEBAN OPERASIONAL & SUSUT', ''],
-      ...st.expenseRows.map(e => [e.name, e.amount]),
+      ...(st.expenseRows.length ? st.expenseRows.map(e => [`  • ${e.name}`, e.amount]) : [['  • Belum ada beban operasional tercatat', 0]]),
       ['TOTAL BEBAN OPERASIONAL', -st.totalOpex],
-      ['LABA / (RUGI) BERSIH', st.netProfit]
+      ['LABA / (RUGI) BERSIH USAHA', st.netProfit]
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(plRows), 'Laba Rugi');
+    const wsPl = styleAndFormatWorksheet(XLSX.utils.aoa_to_sheet(plRows), {
+      headerRow: 4, isFinancialStatement: true, titleBannerRows: 3
+    });
+    XLSX.utils.book_append_sheet(wb, wsPl, 'Laba Rugi');
 
+    // 2. SHEET NERACA
     const bsRows = [
-      [`NERACA KEUANGAN — ${db.storeProfile.name.toUpperCase()}`],
+      [`NERACA KEUANGAN (BALANCE SHEET) — ${db.storeProfile.name.toUpperCase()}`, ''],
       ['Posisi Neraca', st.reportEnd ? `Per ${st.reportEnd}` : 'Saldo terbaru'],
       ['Tanggal Cetak', todayStr()],
-      [],
-      ['ASET (HARTA)', 'Nominal (Rp)'],
+      ['', ''],
+      ['Keterangan Pos Neraca', 'Nominal (Rp)'],
+      ['ASET (HARTA USAHA)', ''],
       ['Kas & Rekening Bank', st.cash],
       ['Piutang Pelanggan', st.receivables],
-      ['Persediaan Bahan Baku', st.invRaw],
-      ['Persediaan Produk Jadi', st.invFin],
-      ['Peralatan & Aset Dapur', st.equipment],
+      ['Persediaan Bahan Baku & Kemasan (Gudang)', st.invRaw],
+      ['Persediaan Produk Jadi (Etalase Siap Jual)', st.invFin],
+      ['Peralatan & Aset Dapur (Oven, Mixer, Loyang)', st.equipment],
       ['TOTAL ASET', st.totalAssets],
-      [],
-      ['KEWAJIBAN & MODAL', 'Nominal (Rp)'],
-      ['Hutang Supplier', st.payable],
+      ['', ''],
+      ['KEWAJIBAN & MODAL PEMILIK', ''],
+      ['Hutang Supplier (Pembelian Tempo)', st.payable],
       ['Hutang Biaya & Upah', st.expensePayable],
-      ['Uang Muka Pelanggan (PO)', st.customerDeposit],
+      ['Uang Muka Pelanggan (DP Pre-Order Aktif)', st.customerDeposit],
       ['Modal Disetor Pemilik', st.ownerCapital],
       ['Penyesuaian Saldo Awal Persediaan', st.openingEquityAdjustment],
-      ['Prive Pemilik', -st.prive],
-      ['Akumulasi Laba Bersih s.d. tanggal neraca', st.cumulativeNetProfit],
+      ['Prive Pemilik (Penarikan Pribadi)', -st.prive],
+      ['Akumulasi Laba Bersih Berjalan', st.cumulativeNetProfit],
       ['TOTAL KEWAJIBAN & MODAL', st.totalLiabAndEquity]
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bsRows), 'Neraca');
+    const wsBs = styleAndFormatWorksheet(XLSX.utils.aoa_to_sheet(bsRows), {
+      headerRow: 4, isFinancialStatement: true, titleBannerRows: 3
+    });
+    XLSX.utils.book_append_sheet(wb, wsBs, 'Neraca');
 
+    // 3. SHEET NERACA SALDO
     const trialBalance = computeTrialBalance(st.reportEnd || '');
     const trialBalanceRows = [
-      [`NERACA SALDO — ${db.storeProfile.name.toUpperCase()}`],
-      ['Posisi', st.reportEnd ? `Per ${st.reportEnd}` : 'Saldo terbaru'],
-      ['Tanggal Cetak', todayStr()],
-      [],
-      ['Nama Akun', 'Debit (Rp)', 'Kredit (Rp)'],
-      ...(trialBalance.available ? trialBalance.accounts.map(row => [row.account, row.debit || '', row.credit || '']) : [[`Tidak tersedia: ${trialBalance.reason}`, '', '']]),
-      ...(trialBalance.available ? [['TOTAL', trialBalance.totalDebit, trialBalance.totalCredit]] : [])
+      [`NERACA SALDO (TRIAL BALANCE) — ${db.storeProfile.name.toUpperCase()}`, '', ''],
+      ['Posisi Saldo', st.reportEnd ? `Per ${st.reportEnd}` : 'Saldo terbaru', ''],
+      ['Tanggal Cetak', todayStr(), ''],
+      ['', '', ''],
+      ['Nama Akun Buku Besar', 'Debit (Rp)', 'Kredit (Rp)'],
+      ...(trialBalance.available
+        ? trialBalance.accounts.map(row => [row.account, row.debit || 0, row.credit || 0])
+        : [[`Tidak tersedia: ${trialBalance.reason}`, 0, 0]]),
+      ...(trialBalance.available ? [['TOTAL NERACA SALDO', trialBalance.totalDebit, trialBalance.totalCredit]] : [])
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(trialBalanceRows), 'Neraca Saldo');
+    const wsTb = styleAndFormatWorksheet(XLSX.utils.aoa_to_sheet(trialBalanceRows), {
+      headerRow: 4, isFinancialStatement: true, titleBannerRows: 3
+    });
+    XLSX.utils.book_append_sheet(wb, wsTb, 'Neraca Saldo');
 
+    // 4. SHEET ARUS KAS
     const cfRows = [
-      ['LAPORAN ARUS KAS (CASH FLOW)'],
-      ['Periode', selectedPeriodLabel],
+      [`LAPORAN ARUS KAS (CASH FLOW) — ${db.storeProfile.name.toUpperCase()}`, ''],
+      ['Periode Laporan', selectedPeriodLabel],
+      ['Tanggal Cetak', todayStr()],
+      ['', ''],
+      ['Keterangan Arus Kas', 'Nominal (Rp)'],
       ['Saldo Kas Awal Periode', st.openingCash],
-      ['Kas Masuk Operasional', st.cfOperatingIn],
-      ['Kas Keluar Operasional', -st.cfOperatingOut],
-      ['Arus Kas Bersih Operasional', st.cfOperatingIn - st.cfOperatingOut],
-      ['Pembelian Peralatan (Investasi)', -st.cfInvestingOut],
-      ['Setoran Modal Pemilik', st.cfFinancingIn],
-      ['Prive Pemilik', -st.cfFinancingOut],
-      ['Kenaikan / (Penurunan) Kas Periode Ini', st.cfOperatingIn - st.cfOperatingOut - st.cfInvestingOut + st.cfFinancingIn - st.cfFinancingOut],
-      ['SALDO KAS AKHIR', st.cash]
+      ['ARUS KAS AKTIVITAS OPERASIONAL', ''],
+      ['  • Kas Masuk Operasional (Penjualan, DP PO & Pelunasan)', st.cfOperatingIn],
+      ['  • Kas Keluar Operasional (Beli Bahan, Kemasan & Beban)', -st.cfOperatingOut],
+      ['ARUS KAS BERSIH OPERASIONAL', st.cfOperatingIn - st.cfOperatingOut],
+      ['ARUS KAS AKTIVITAS INVESTASI & PENDANAAN', ''],
+      ['  • Pembelian Peralatan Dapur (Investasi)', -st.cfInvestingOut],
+      ['  • Setoran Modal Pemilik', st.cfFinancingIn],
+      ['  • Prive / Penarikan Pribadi Pemilik', -st.cfFinancingOut],
+      ['TOTAL KENAIKAN / (PENURUNAN) KAS PERIODE INI', st.cfOperatingIn - st.cfOperatingOut - st.cfInvestingOut + st.cfFinancingIn - st.cfFinancingOut],
+      ['SALDO KAS AKHIR PERIODE', st.cash]
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cfRows), 'Arus Kas');
+    const wsCf = styleAndFormatWorksheet(XLSX.utils.aoa_to_sheet(cfRows), {
+      headerRow: 4, isFinancialStatement: true, titleBannerRows: 3
+    });
+    XLSX.utils.book_append_sheet(wb, wsCf, 'Arus Kas');
 
-    const ledgerData = db.ledger.map(l => ({
+    // 5. SHEET BUKU BESAR
+    const ledgerData = db.ledger.length ? db.ledger.map((l, idx) => ({
+      No: idx + 1,
       Tanggal: l.date,
-      Keterangan: l.desc,
+      Keterangan_Transaksi: l.desc,
       Pos_Anggaran: l.category,
       Akun_Debit: l.debitAccount,
       Akun_Kredit: l.creditAccount,
-      Jenis_Referensi: l.referenceType || '',
-      ID_Referensi: l.referenceId || '',
-      // Preserve fractional legacy postings exactly; all new transaction paths round before persistence.
-      Nominal_Rp: Number(l.amount)
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ledgerData), 'Buku Besar');
+      Nominal_Rp: Number(l.amount),
+      Status_Audit: l.editedAt ? `Diedit (${l.editReason || '-'})` : 'Asli'
+    })) : [{ No: 1, Tanggal: todayStr(), Keterangan_Transaksi: 'Belum ada transaksi', Pos_Anggaran: '-', Akun_Debit: '-', Akun_Kredit: '-', Nominal_Rp: 0, Status_Audit: '-' }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(ledgerData)), 'Buku Besar');
 
-    const matData = db.materials.map(m => ({
-      Nama_Bahan: m.name,
-      Sisa_Stok: m.stock,
+    // 6. SHEET STOK BAHAN BAKU & KEMASAN
+    const matData = db.materials.length ? db.materials.map((m, idx) => ({
+      No: idx + 1,
+      Nama_Barang_Gudang: m.name,
+      Kategori: getMaterialCategoryLabel(m.category),
+      Sisa_Stok: Number(m.stock),
       Satuan: m.unit,
-      Harga_Rata_Rata_Rp_Per_Satuan_Dasar: m.avgCost,
-      Nilai_Persediaan_Rp: m.stock * m.avgCost
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matData), 'Stok Bahan Baku');
+      Harga_Rata_Rata_Rp: Number(m.avgCost),
+      Total_Nilai_Persediaan_Rp: Math.round(Number(m.stock) * Number(m.avgCost))
+    })) : [{ No: 1, Nama_Barang_Gudang: 'Belum ada stok bahan', Kategori: '-', Sisa_Stok: 0, Satuan: '-', Harga_Rata_Rata_Rp: 0, Total_Nilai_Persediaan_Rp: 0 }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(matData)), 'Stok Gudang');
 
-    const movementData = db.stockMovements.map(m => ({
+    // 7. SHEET MUTASI BAHAN BAKU
+    const movementData = db.stockMovements.length ? db.stockMovements.map((m, idx) => ({
+      No: idx + 1,
       Tanggal: m.date,
       Jenis_Mutasi: movementTypeLabel(m.type),
       Nama_Bahan: m.materialName,
-      Kuantitas_Mutasi: m.quantity,
+      Kuantitas_Mutasi: Number(m.quantity),
       Satuan: m.unit,
-      Biaya_Per_Unit_Rp: m.unitCost,
-      Nilai_Mutasi_Rp: m.value,
-      Stok_Sebelum: m.stockBefore,
-      Stok_Sesudah: m.stockAfter,
-      Jenis_Referensi: m.referenceType,
-      ID_Referensi: m.referenceId,
-      Bukti_Verifikasi_HPP: m.valuationEvidence || '',
-      Catatan: m.notes
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(movementData), 'Mutasi Bahan Baku');
+      Harga_Satuan_Rp: Number(m.unitCost),
+      Nilai_Mutasi_Rp: Number(m.value),
+      Stok_Sebelum: Number(m.stockBefore),
+      Stok_Sesudah: Number(m.stockAfter),
+      Catatan: m.notes || '-'
+    })) : [{ No: 1, Tanggal: todayStr(), Jenis_Mutasi: '-', Nama_Bahan: 'Belum ada mutasi', Kuantitas_Mutasi: 0, Satuan: '-', Harga_Satuan_Rp: 0, Nilai_Mutasi_Rp: 0, Stok_Sebelum: 0, Stok_Sesudah: 0, Catatan: '-' }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(movementData)), 'Mutasi Gudang');
 
-    const productionData = db.productions.map(p => ({
-      ID_Batch: p.id, Tanggal: p.date, Nama_Produk: p.recipeName, Versi_Resep: p.recipeVersion,
-      Snapshot_Resep_JSON: p.recipeSnapshot ? JSON.stringify(p.recipeSnapshot) : 'Tidak tersedia — batch lama',
-      Waste_Diterapkan: p.wasteIncluded === true ? 'Ya' : p.wasteIncluded === false ? 'Tidak' : 'Tidak diketahui — batch lama',
-      Jumlah_Batch: p.batches, Hasil_Aktual: p.actualYield, Satuan_Hasil: p.yieldUnit,
-      Total_HPP_Aktual_Rp: p.totalHpp, HPP_Per_Unit_Rp: p.unitHpp,
-      Biaya_Bahan_Rp: p.costBreakdown?.materialCost, Biaya_Kemasan_Rp: p.costBreakdown?.packagingCost,
-      Biaya_Tenaga_Kerja_Rp: p.costBreakdown?.laborCost, Biaya_Overhead_Rp: p.costBreakdown?.overheadCost
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productionData), 'Riwayat Produksi');
+    // 8. SHEET RIWAYAT PRODUKSI DAPUR
+    const productionData = db.productions.length ? db.productions.map((p, idx) => ({
+      No: idx + 1,
+      Tanggal: p.date,
+      Nama_Produk_Kue: p.recipeName,
+      Jumlah_Batch: Number(p.batches),
+      Hasil_Jadi_Aktual: Number(p.actualYield),
+      Satuan: p.yieldUnit,
+      Biaya_Bahan_Adonan_Rp: Number(p.costBreakdown?.materialCost ?? p.totalHpp ?? 0),
+      Biaya_Kemasan_Produksi_Rp: Number(p.costBreakdown?.packagingCost ?? 0),
+      Total_HPP_Produksi_Rp: Number(p.totalHpp),
+      HPP_Per_Satuan_Rp: Math.round(Number(p.unitHpp))
+    })) : [{ No: 1, Tanggal: todayStr(), Nama_Produk_Kue: 'Belum ada riwayat produksi', Jumlah_Batch: 0, Hasil_Jadi_Aktual: 0, Satuan: '-', Biaya_Bahan_Adonan_Rp: 0, Biaya_Kemasan_Produksi_Rp: 0, Total_HPP_Produksi_Rp: 0, HPP_Per_Satuan_Rp: 0 }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(productionData)), 'Riwayat Produksi');
 
-    const finishedMovementData = db.finishedGoodsMovements.map(m => ({
+    // 9. SHEET MUTASI PRODUK JADI
+    const finishedMovementData = db.finishedGoodsMovements.length ? db.finishedGoodsMovements.map((m, idx) => ({
+      No: idx + 1,
       Tanggal: m.date,
       Jenis_Mutasi: finishedGoodsMovementTypeLabel(m.type),
       Nama_Produk: m.recipeName,
-      Kuantitas_Mutasi: m.quantity,
+      Kuantitas: Number(m.quantity),
       Satuan: m.unit,
-      HPP_Per_Unit_Rp: m.unitCost,
-      Nilai_Mutasi_Rp: m.value,
-      Status_Valuasi: m.valuationStatus,
-      Stok_Sebelum: m.stockBefore,
-      Stok_Sesudah: m.stockAfter,
-      Nilai_Sebelum_Rp: m.valueBefore,
-      Nilai_Sesudah_Rp: m.valueAfter,
-      Jenis_Referensi: m.referenceType,
-      ID_Referensi: m.referenceId,
-      Catatan: m.notes
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(finishedMovementData), 'Mutasi Produk Jadi');
+      HPP_Per_Unit_Rp: Number(m.unitCost || 0),
+      Nilai_Mutasi_Rp: Number(m.value || 0),
+      Stok_Sebelum: Number(m.stockBefore),
+      Stok_Sesudah: Number(m.stockAfter),
+      Catatan: m.notes || '-'
+    })) : [{ No: 1, Tanggal: todayStr(), Jenis_Mutasi: '-', Nama_Produk: 'Belum ada mutasi', Kuantitas: 0, Satuan: '-', HPP_Per_Unit_Rp: 0, Nilai_Mutasi_Rp: 0, Stok_Sebelum: 0, Stok_Sesudah: 0, Catatan: '-' }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(finishedMovementData)), 'Mutasi Produk Jadi');
 
+    // 10. SHEET REKONSILIASI STOK
     const currentStatement = computeAccountingStatements({ start: '', end: '' });
     const rawSubledgerValue = getRawInventorySubledgerValue();
     const rawLedgerValue = currentStatement.invRaw;
     const finishedSubledger = getFinishedGoodsSubledgerValue();
     const reconciliationRows = [
-      ['REKONSILIASI PERSEDIAAN BAHAN BAKU — SALDO TERKINI'],
-      ['Nilai kartu bahan (kuantitas × biaya rata-rata)', rawSubledgerValue],
-      ['Saldo akun persediaan bahan di buku besar', rawLedgerValue],
-      ['Selisih', rawSubledgerValue - rawLedgerValue],
-      ['Catatan', 'Selisih harus diperiksa. Jurnal penyesuaian saldo awal hanya dibuat setelah stok fisik dan valuasi diverifikasi.'],
-      [],
-      ['REKONSILIASI PERSEDIAAN PRODUK JADI — SALDO TERKINI'],
-      ['Nilai subledger produk jadi', finishedSubledger.available ? finishedSubledger.value : 'BELUM TERSEDIA'],
-      ['Saldo akun Persediaan Produk Jadi di buku besar', st.invFin],
-      ['Selisih', finishedSubledger.available ? finishedSubledger.value - st.invFin : 'TIDAK DAPAT DIHITUNG'],
-      ['Catatan', finishedSubledger.available ? 'Selisih harus diperiksa sebelum membuat jurnal penyesuaian.' : (finishedSubledger.reason || 'Verifikasi HPP dan histori mutasi produk jadi.')]
+      [`REKONSILIASI NILAI PERSEDIAAN GUDANG & ETALASE — ${db.storeProfile.name.toUpperCase()}`, ''],
+      ['Tanggal Pemeriksaan', todayStr()],
+      ['Status', 'Rekonsiliasi Subledger vs Buku Besar'],
+      ['', ''],
+      ['Keterangan Rekonsiliasi Persediaan', 'Nominal (Rp)'],
+      ['REKONSILIASI PERSEDIAAN BAHAN & KEMASAN (GUDANG)', ''],
+      ['Nilai Kartu Stok Gudang (Qty × Harga Rata-Rata)', rawSubledgerValue],
+      ['Saldo Akun Persediaan Bahan di Buku Besar', rawLedgerValue],
+      ['SELISIH REKONSILIASI GUDANG', rawSubledgerValue - rawLedgerValue],
+      ['', ''],
+      ['REKONSILIASI PERSEDIAAN PRODUK JADI (ETALASE)', ''],
+      ['Nilai Subledger Produk Jadi di Etalase', finishedSubledger.available ? finishedSubledger.value : 0],
+      ['Saldo Akun Persediaan Produk Jadi di Buku Besar', st.invFin],
+      ['SELISIH REKONSILIASI PRODUK JADI', finishedSubledger.available ? finishedSubledger.value - st.invFin : 0]
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(reconciliationRows), 'Rekonsiliasi Stok');
+    const wsRec = styleAndFormatWorksheet(XLSX.utils.aoa_to_sheet(reconciliationRows), {
+      headerRow: 4, isFinancialStatement: true, titleBannerRows: 3
+    });
+    XLSX.utils.book_append_sheet(wb, wsRec, 'Rekonsiliasi Stok');
 
-    const hppData = db.recipes.map(r => {
+    // 11. SHEET DAFTAR HPP PRODUK & PAKET
+    const hppData = db.recipes.length ? db.recipes.map((r, idx) => {
       const m = calculateRecipeMetrics(r);
       const estimatedMargin = calculateGrossMargin(r.sellPrice, m.unitHpp);
       return {
+        No: idx + 1,
         Nama_Produk: r.name,
-        Tipe: r.type === 'bundle' ? 'Paket Snackbox/Nampan' : 'Kue Satuan',
-        Versi_Resep: Number(r.recipeVersion) || 1,
-        Target_Gross_Margin_Persen: Number(r.targetGrossMargin || 50),
-        Basis_Overhead: r.type === 'bundle' ? '-' : ((r.overheadBasis || 'materials') === 'materials' ? 'Bahan + waste' : (r.overheadBasis === 'labor' ? 'Tenaga kerja' : 'Bahan + waste + tenaga kerja')),
-        Akun_Alokasi_Overhead: r.type === 'bundle' ? '-' : (r.overheadAccount || 'Beban Listrik, Air & Gas'),
-        Harga_Jual_Rekomendasi_Rp: Math.round(recommendedSellingPrice(m.unitHpp, r.targetGrossMargin || 50)),
-        Satuan: r.yieldUnit,
-        Biaya_Bahan_Standar_Rp: Math.round(m.rawMatCost || 0),
-        Waste_Rp: Math.round(m.wasteCost || 0),
-        Kemasan_Rp: Math.round(m.packaging || 0),
-        Tenaga_Kerja_Langsung_Rp: Math.round(m.labor || 0),
-        Overhead_Produksi_Rp: Math.round(m.overhead || 0),
-        Total_HPP_Batch_Rp: Math.round(m.totalHpp || 0),
-        HPP_Resep_Per_Satuan_Rp: Math.round(m.unitHpp || 0),
-        HPP_Stok_Aktual_Per_Satuan_Rp: r.type === 'bundle' || Number(r.finishedStock || 0) <= 0
-          ? ''
-          : (resolveFinishedGoodsUnitHpp(r).available ? Math.round(resolveFinishedGoodsUnitHpp(r).unitCost) : 'BELUM TERSEDIA'),
-        Harga_Jual_Rp: Math.round(r.sellPrice || 0),
-        Laba_Kotor_Estimasi_Per_Unit_Rp: Math.round((r.sellPrice || 0) - m.unitHpp),
-        Gross_Margin_Estimasi_Persen: Number(estimatedMargin.toFixed(2)),
-        Stok_Tersedia: getAvailableStockForRecipe(r)
+        Kategori_Produk: r.type === 'bundle' ? 'Paket Snackbox/Nampan' : 'Kue Satuan',
+        Satuan_Jual: r.yieldUnit,
+        Biaya_Bahan_Rp: Math.round(m.rawMatCost || 0),
+        Biaya_Waste_Rp: Math.round(m.wasteCost || 0),
+        Biaya_Kemasan_Rp: Math.round(m.packaging || 0),
+        Total_HPP_Per_Batch_Rp: Math.round(m.totalHpp || 0),
+        HPP_Per_Satuan_Rp: Math.round(m.unitHpp || 0),
+        Harga_Jual_Aktual_Rp: Math.round(r.sellPrice || 0),
+        Laba_Kotor_Per_Unit_Rp: Math.round((r.sellPrice || 0) - m.unitHpp),
+        Gross_Margin_Persen: Number(estimatedMargin.toFixed(1)),
+        Stok_Etalase_Siap_Jual: Number(getAvailableStockForRecipe(r))
       };
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hppData), 'Daftar HPP Produk');
+    }) : [{ No: 1, Nama_Produk: 'Belum ada resep terdaftar', Kategori_Produk: '-', Satuan_Jual: '-', Biaya_Bahan_Rp: 0, Biaya_Waste_Rp: 0, Biaya_Kemasan_Rp: 0, Total_HPP_Per_Batch_Rp: 0, HPP_Per_Satuan_Rp: 0, Harga_Jual_Aktual_Rp: 0, Laba_Kotor_Per_Unit_Rp: 0, Gross_Margin_Persen: 0, Stok_Etalase_Siap_Jual: 0 }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(hppData)), 'Daftar HPP Produk');
 
-    const custData = db.customers.map(c => ({
+    // 12. SHEET DATA PELANGGAN (CRM)
+    const custData = db.customers.length ? db.customers.map((c, idx) => ({
+      No: idx + 1,
       Nama_Pelanggan: c.name,
-      No_WhatsApp: c.phone,
-      Alamat: c.address,
-      Catatan: c.notes,
-      Jumlah_Order: c.orderCount || 0,
+      No_WhatsApp: c.phone || '-',
+      Alamat_Pengiriman: c.address || '-',
+      Catatan_Pelanggan: c.notes || '-',
+      Frekuensi_Order: Number(c.orderCount || 0),
       Total_Belanja_Rp: Math.round(c.totalSpent || 0)
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(custData), 'Data Pelanggan');
+    })) : [{ No: 1, Nama_Pelanggan: 'Belum ada pelanggan', No_WhatsApp: '-', Alamat_Pengiriman: '-', Catatan_Pelanggan: '-', Frekuensi_Order: 0, Total_Belanja_Rp: 0 }];
+    XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(custData)), 'Data Pelanggan');
 
-    XLSX.writeFile(wb, `Laporan_${db.storeProfile.name.replace(/[^a-zA-Z0-9]/g, '_')}_${todayStr()}.xlsx`);
-    showToast('✓ File Excel (.xlsx) berhasil diunduh!');
+    XLSX.writeFile(wb, `Laporan_Keuangan_${db.storeProfile.name.replace(/[^a-zA-Z0-9]/g, '_')}_${todayStr()}.xlsx`);
+    showToast('✓ Laporan Excel Profesional (.xlsx) berhasil diunduh!');
   }
 
   // ==================== DATA DEMO, BACKUP, RESTORE & RESET ====================
@@ -7840,7 +8073,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="ai-drawer-box">
     <div class="ai-header">
       <div>
-        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v15 Pro</span></div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v16 Pro</span></div>
         <div style="font-size:0.7rem; color:#F6E8D7;" id="ai-engine-status-sub">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
       </div>
       <div style="display:flex; gap:5px;">
@@ -7873,7 +8106,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div class="ai-chat-body" id="ai-chat-history">
       <div class="ai-msg bot">
-        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v15 Pro)</strong> 🧁.<br><br>
+        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v16 Pro)</strong> 🧁.<br><br>
         <strong>Fitur Baru!</strong> Anda bisa meminta resep atau menempelkan resep kue Anda di chat ini (contoh: <em>"Buatkan resep Donat Kentang 20 pcs dan masukkan ke HPP"</em>), lalu klik tombol hijau <strong>➕ Masukkan Resep Ini ke Menu HPP Otomatis</strong> yang muncul di bawah jawaban saya!<br><br>
         Masih baru memakai aplikasi ini? Klik tombol hijau <strong>▶️ Mulai Tur Layar</strong> di atas untuk dipandu langkah demi langkah langsung di layar Anda.
       </div>
