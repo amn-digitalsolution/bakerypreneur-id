@@ -7976,8 +7976,10 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   function checkBuyerAccessGate() {
     try {
       const savedToken = localStorage.getItem(ACCESS_STORAGE_KEY);
-      if (savedToken && normalizeAccessCode(savedToken) === normalizeAccessCode(MASTER_BUYER_ACCESS_CODE)) {
-        unlockGateUI();
+      function checkBuyerAccessGate() {
+  // LANGSUNG BUKA TANPA KODE (DARURAT)
+  unlockGateUI();
+}
         const banner = document.getElementById('trial-status-banner');
         if (banner) banner.remove();
         return;
