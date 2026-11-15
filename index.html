@@ -7976,10 +7976,8 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   function checkBuyerAccessGate() {
     try {
       const savedToken = localStorage.getItem(ACCESS_STORAGE_KEY);
-      function checkBuyerAccessGate() {
-  // LANGSUNG BUKA TANPA KODE (DARURAT)
-  unlockGateUI();
-}
+      if (savedToken && normalizeAccessCode(savedToken) === normalizeAccessCode(MASTER_BUYER_ACCESS_CODE)) {
+        unlockGateUI();
         const banner = document.getElementById('trial-status-banner');
         if (banner) banner.remove();
         return;
@@ -8258,8 +8256,7 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
     return safe
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/
-/g, '<br>');
+      .replace(/\n/g, '<br>');
   }
 
   function buildLiveStoreContextSummary() {

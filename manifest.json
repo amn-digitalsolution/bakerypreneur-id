@@ -1,6 +1,6 @@
 {
   "name": "Cake & Bakery Preneur",
-  "short_name": "BakeryPreneur",
+  "short_name": "Bakery Preneur",
   "description": "Sistem Keuangan, Kasir, HPP & Manajemen Dapur UMKM Bakery",
   "start_url": "./index.html",
   "display": "standalone",
@@ -10,12 +10,14 @@
     {
       "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
