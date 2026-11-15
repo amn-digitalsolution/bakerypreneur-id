@@ -8001,11 +8001,19 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const inputEl = document.getElementById('buyer-access-input');
     const errEl = document.getElementById('gate-error-msg');
-    const entered = normalizeAccessCode(inputEl ? inputEl.value : '');
+    const rawVal = inputEl ? inputEl.value : '';
+    const entered = normalizeAccessCode(rawVal);
     const expectedMaster = normalizeAccessCode(MASTER_BUYER_ACCESS_CODE);
     const expectedTrial = normalizeAccessCode(TRIAL_ACCESS_CODE);
 
-    if (entered && entered === expectedMaster) {
+    console.log("Verifying code:", rawVal, "-> Normalized:", entered);
+
+    if (!entered) {
+      if (errEl) errEl.textContent = '⚠️ Masukkan kode akses terlebih dahulu.';
+      return false;
+    }
+
+    if (entered === expectedMaster) {
       try {
         localStorage.setItem(ACCESS_STORAGE_KEY, MASTER_BUYER_ACCESS_CODE);
       } catch (err) {}
@@ -8013,12 +8021,14 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       const banner = document.getElementById('trial-status-banner');
       if (banner) banner.remove();
       if (typeof showToast === 'function') {
-        showToast('✓ Kode Resmi diterima! Aplikasi aktif permanen di perangkat ini.');
+        showToast('✓ Kode Resmi diterima! Aplikasi aktif permanen.');
+      } else {
+        alert('✓ Kode Resmi diterima! Selamat menggunakan.');
       }
       return false;
     }
 
-    if (entered && entered === expectedTrial) {
+    if (entered === expectedTrial) {
       const existingTrialStart = getTrialStartTime();
       const maxDurationMs = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
 
@@ -8026,7 +8036,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
         const elapsed = Date.now() - existingTrialStart;
         if (elapsed >= maxDurationMs || elapsed < 0) {
           if (errEl) {
-            errEl.textContent = '🚫 Kode Percobaan sudah pernah digunakan dan masa aktif ' + TRIAL_DURATION_DAYS + ' hari di perangkat ini telah berakhir. Silakan masukkan Kode Akses Pembeli Resmi.';
+            errEl.textContent = '🚫 Masa aktif trial ' + TRIAL_DURATION_DAYS + ' hari telah berakhir. Masukkan Kode Pembeli Resmi.';
           }
           if (inputEl) inputEl.select();
           return false;
@@ -8034,7 +8044,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
           unlockGateUI();
           renderTrialCountdownBanner(maxDurationMs - elapsed);
           if (typeof showToast === 'function') {
-            showToast('✓ Melanjutkan Masa Percobaan yang masih aktif.');
+            showToast('✓ Melanjutkan Masa Percobaan.');
           }
           return false;
         }
@@ -8050,7 +8060,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       }
     }
 
-    if (errEl) errEl.textContent = '⚠️ Kode Akses tidak sesuai. Periksa kembali huruf/angkanya.';
+    if (errEl) errEl.textContent = '⚠️ Kode tidak sesuai ("' + rawVal.trim() + '"). Periksa kembali.';
     if (inputEl) inputEl.select();
     return false;
   }
