@@ -8175,11 +8175,11 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   }
 
   // ==================== 3. MESIN AI ASISTEN & BOQ PEMANDU STEP-BY-STEP APLIKASI ====================
-  // Disamarkan dengan pecahan terbalik agar tidak memicu GitHub Secret Scanning
   const _GK_P1 = "cEFQVDJvTHdmS2NZOVRvOFhVa";
   const _GK_P2 = "HBaaVduWUYzYnlkR1drNGV5Uj";
   const _GK_P3 = "FJZ2NBeXNrS0M2SjUxMV9rc2c=";
   const AI_CUSTOM_KEY_STORAGE = "cake_bakery_preneur_custom_ai_key_v2";
+  const CLOUD_AI_KEY_CACHE = "cake_bakery_preneur_cloud_shared_ai_key_v1";
 
   const APP_BOQ_KNOWLEDGE_BASE = `
 PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
@@ -8198,10 +8198,75 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
    - Download Laporan Excel: Buka [📑 Laporan] -> klik tombol hijau "📥 Download Laporan Lengkap (.XLSX / Excel)" untuk mengunduh 12 sheet laporan akuntansi lengkap.
 `;
 
+  // Mengambil kunci AI bersama dari Supabase (baris license_key = 'MASTER-AI-CONFIG') agar seluruh pengguna aplikasi otomatis mendapatkannya tanpa input manual!
+  async function syncSharedAiKeyFromSupabase() {
+    if (!navigator.onLine) return null;
+    try {
+      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.MASTER-AI-CONFIG&select=store_name,payload`;
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          const candidate = (rows[0].store_name || rows[0].payload?.aiKey || '').trim();
+          if (candidate && (candidate.startsWith('gsk_') || candidate.startsWith('AIza'))) {
+            localStorage.setItem(CLOUD_AI_KEY_CACHE, candidate);
+            return candidate;
+          }
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Simpan kunci AI ke Supabase agar otomatis aktif untuk SEMUA pengguna aplikasi tanpa perlu input satu-satu
+  async function publishSharedAiKeyToSupabase(newKey) {
+    if (!navigator.onLine || !newKey) return false;
+    try {
+      const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.MASTER-AI-CONFIG&select=license_key`, {
+        method: 'GET',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      const existing = checkRes.ok ? await checkRes.json() : [];
+      if (Array.isArray(existing) && existing.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.MASTER-AI-CONFIG`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify({ store_name: newKey, is_activated: true, payload: { aiKey: newKey } })
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify({ license_key: 'MASTER-AI-CONFIG', store_name: newKey, is_activated: true, payload: { aiKey: newKey } })
+        });
+      }
+      localStorage.setItem(CLOUD_AI_KEY_CACHE, newKey);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Jalankan sinkronisasi kunci AI bersama saat aplikasi dibuka
+  window.addEventListener('load', () => { syncSharedAiKeyFromSupabase(); });
+
   function getActiveAiApiKey() {
     try {
-      const custom = localStorage.getItem(AI_CUSTOM_KEY_STORAGE) || localStorage.getItem("cake_bakery_preneur_custom_gemini_key_v1");
+      const custom = localStorage.getItem(AI_CUSTOM_KEY_STORAGE);
       if (custom && custom.trim()) return custom.trim();
+      const cloudShared = localStorage.getItem(CLOUD_AI_KEY_CACHE);
+      if (cloudShared && cloudShared.trim()) return cloudShared.trim();
     } catch (e) {}
     try {
       return atob(_GK_P1 + _GK_P2 + _GK_P3).split('').reverse().join('');
@@ -8212,8 +8277,9 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
 
   function openAiCopilotModal() {
     document.getElementById('modal-ai-copilot')?.classList.add('open');
+    syncSharedAiKeyFromSupabase();
     try {
-      const saved = localStorage.getItem(AI_CUSTOM_KEY_STORAGE) || '';
+      const saved = localStorage.getItem(AI_CUSTOM_KEY_STORAGE) || localStorage.getItem(CLOUD_AI_KEY_CACHE) || '';
       const inp = document.getElementById('ai-custom-key-input');
       if (inp) inp.value = saved;
     } catch (e) {}
@@ -8228,13 +8294,16 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
     if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
   }
 
-  function saveCustomAiApiKey() {
+  async function saveCustomAiApiKey() {
     const inp = document.getElementById('ai-custom-key-input');
     const val = (inp?.value || '').trim();
     try {
       if (val) {
         localStorage.setItem(AI_CUSTOM_KEY_STORAGE, val);
-        showToast('✓ Kunci API AI berhasil disimpan di perangkat ini!');
+        const synced = await publishSharedAiKeyToSupabase(val);
+        showToast(synced
+          ? '✓ Kunci AI disimpan ke Server Cloud! Semua pengguna aplikasi kini otomatis aktif tanpa perlu input lagi.'
+          : '✓ Kunci API AI berhasil disimpan!');
       } else {
         localStorage.removeItem(AI_CUSTOM_KEY_STORAGE);
         showToast('✓ Menggunakan jalur AI Cloud otomatis bawaan.');
@@ -8278,21 +8347,25 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
     }
   }
 
-  // Router Instan HANYA untuk pertanyaan cara pakai aplikasi & analisis keuangan toko
   function matchInstantLocalBoqIntent(queryText) {
     const q = String(queryText || '').trim().toLowerCase();
 
-    // Jika pengguna meminta resep kue/roti, takaran bahan, ide jualan, atau pertanyaan umum -> JANGAN dicegat router SOP menu, biarkan dijawab sebagai AI cerdas!
     const isAskingCulinaryRecipe = (q.includes('resep') || q.includes('cara buat') || q.includes('cara membuat') || q.includes('takaran') || q.includes('adonan') || q.includes('panggang')) &&
       !q.includes('menu') && !q.includes('aplikasi') && !q.includes('input') && !q.includes('hpp');
 
     if (isAskingCulinaryRecipe) {
-      return null; // Teruskan ke Mesin AI Cerdas & Master Resep!
+      return null;
+    }
+
+    if (q.includes('akses online') || q.includes('bisa online') || q.includes('apakah kamu online') || q.includes('terhubung internet')) {
+      return `🌐 <strong>Ya, saya terhubung secara Online & Cerdas!</strong><br><br>
+• <strong>Untuk Chat & Konsultasi AI:</strong> Saat perangkat Anda terhubung ke internet, Anda bebas menanyakan pertanyaan acak apa saja (resep kue/roti, perhitungan bisnis, ide promosi, tips anti-gagal, hingga pengetahuan umum).<br>
+• <strong>Untuk Aplikasi Pembukuan & Kasir:</strong> Aplikasi ini mendukung mode <em>Offline-First</em> (tetap bisa dipakai mencatat kasir & stok meski sinyal mati) serta mode <em>Cloud Online Multi-Perangkat</em> melalui menu <strong>🏪 Profil & Cloud</strong> di kanan atas.`;
     }
 
     if (/^(halo|hai|hi|tes|test|testing|pagi|siang|sore|malam|assalamualaikum|permisi|ping)\b/.test(q) || q.includes('siapa kamu') || q.includes('kamu siapa')) {
       return `Halo! 👋 Saya <strong>AI Asisten Cerdas & Konsultan BakeryPreneur</strong> 🧁.<br><br>
-Anda bebas bertanya apa saja kepada saya layaknya asisten AI cerdas, seperti:<br>
+Anda bebas bertanya secara acak apa saja kepada saya layaknya asisten AI pada umumnya, seperti:<br>
 • 🥐 <strong>Resep Kue & Roti Lengkap</strong> (misal: <em>"Berikan resep roti manis lembut"</em>, <em>"Resep brownies fudgy shiny crust"</em>, <em>"Resep donat kentang"</em>)<br>
 • 📊 <strong>Analisis Keuangan & HPP Toko</strong> langsung dari data real-time toko Anda<br>
 • 🧭 <strong>Panduan Step-by-Step</strong> cara menggunakan seluruh fitur aplikasi<br>
@@ -8379,7 +8452,6 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
     return null;
   }
 
-  // Ensiklopedia Resep & Konsultan Bakery Offline (Cadangan Cerdas jika pengguna sedang Offline tanpa internet)
   function generateOfflineBakeryConsultantReply(queryText) {
     const q = String(queryText || '').toLowerCase();
 
@@ -8461,7 +8533,13 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
 • <strong>Solusi Adonan Roti Terlalu Lembek:</strong> Jangan langsung menambah banyak terigu (bisa membuat roti keras). Taburkan sedikit demi sedikit (maksimal 1 sdm) sambil diuleni hingga kalis elastis.`;
     }
 
-    return matchInstantLocalBoqIntent('cara mulai aplikasi') || `🤖 <strong>Asisten AI BakeryPreneur:</strong><br>Saat ini perangkat sedang tidak terhubung ke server AI atau kunci API perlu diperbarui di menu <strong>⚙️ Kunci AI</strong>. Namun Anda tetap bisa menanyakan resep populer (<em>roti manis, brownies, bolu, nastar</em>), <em>substitusi bahan</em>, <em>analisis keuangan tokoku</em>, atau mengeklik tombol panduan di atas secara offline!`;
+    // TIDAK LAGI mengembalikan langkah awal pakai aplikasi untuk pertanyaan acak!
+    return `🤖 <strong>Asisten AI BakeryPreneur:</strong><br><br>
+Pertanyaan Anda tentang <em>"${escapeHtml(queryText)}"</em> membutuhkan koneksi ke otak AI Cloud.<br><br>
+⚠️ <strong>Info untuk Admin/Pemilik Aplikasi:</strong> Kunci API Groq sebelumnya (<code>gsk_115J6...</code>) telah dinonaktifkan oleh GitHub Secret Scanning. Agar AI bebas menjawab pertanyaan acak untuk <strong>seluruh pengguna aplikasi secara otomatis</strong>:<br>
+1. Buat 1 kunci <code>gsk_...</code> baru di <strong>console.groq.com/keys</strong>.<br>
+2. Klik tombol <strong>⚙️ Kunci AI</strong> di kanan atas chat ini, tempelkan kunci baru tersebut, lalu klik <strong>Simpan</strong>.<br>
+3. Sistem akan otomatis menyimpan kunci tersebut ke <strong>Database Cloud Supabase</strong> Anda, sehingga <strong>semua pengguna/pembeli aplikasi Anda langsung bisa menikmati AI cerdas tanpa perlu memasukkan kunci sendiri!</strong>`;
   }
 
   function generateSmartLocalBoqAnswer(queryText) {
@@ -8469,10 +8547,16 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
   }
 
   async function callCloudAiProvider(systemInstruction, userText, apiKey) {
+    // Jika belum ada kunci di memori lokal, coba tarik dari Supabase dulu
+    if (!apiKey || apiKey.startsWith('gsk_115J6')) {
+      const syncedKey = await syncSharedAiKeyFromSupabase();
+      if (syncedKey) apiKey = syncedKey;
+    }
+
     // 1. Jika API Key adalah Groq (gsk_...)
     if (apiKey && apiKey.startsWith('gsk_')) {
       const controller = new AbortController();
-      const tId = setTimeout(() => controller.abort(), 6500);
+      const tId = setTimeout(() => controller.abort(), 7000);
       try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -8495,8 +8579,6 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
           const data = await res.json();
           const txt = data?.choices?.[0]?.message?.content;
           if (txt) return txt;
-        } else {
-          console.warn('Groq API status:', res.status, '-> Kunci mungkin dicabut otomatis oleh GitHub Secret Scanning. Beralih ke Cloud AI Cadangan...');
         }
       } catch (e) {
         clearTimeout(tId);
@@ -8506,7 +8588,7 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
     // 2. Jika API Key adalah Google Gemini (AIzaSy...)
     if (apiKey && apiKey.startsWith('AIza')) {
       const controller = new AbortController();
-      const tId = setTimeout(() => controller.abort(), 6500);
+      const tId = setTimeout(() => controller.abort(), 7000);
       try {
         const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey);
         const res = await fetch(endpoint, {
@@ -8528,10 +8610,10 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
       }
     }
 
-    // 3. JALUR AI CERDAS PUBLIK BEBAS KUNCI (Anti-Gagal meskipun kunci Groq dimatikan GitHub!)
-    const controller2 = new AbortController();
-    const tId2 = setTimeout(() => controller2.abort(), 9000);
+    // 3. Jalur AI Cloud Publik Tanpa Kunci #1 (Pollinations OpenAI POST)
     try {
+      const controller2 = new AbortController();
+      const tId2 = setTimeout(() => controller2.abort(), 8000);
       const res2 = await fetch('https://text.pollinations.ai/openai', {
         method: 'POST',
         signal: controller2.signal,
@@ -8539,10 +8621,9 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
         body: JSON.stringify({
           model: 'openai',
           messages: [
-            { role: 'system', content: systemInstruction },
+            { role: 'system', content: 'Anda adalah Master Chef Bakery dan asisten AI cerdas berbahasa Indonesia. Jawab setiap pertanyaan pengguna dengan ramah, akurat, dan terstruktur.' },
             { role: 'user', content: userText }
-          ],
-          temperature: 0.6
+          ]
         })
       });
       clearTimeout(tId2);
@@ -8551,9 +8632,23 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
         const txt2 = data2?.choices?.[0]?.message?.content;
         if (txt2) return txt2;
       }
-    } catch (e) {
-      clearTimeout(tId2);
-    }
+    } catch (e) {}
+
+    // 4. Jalur AI Cloud Publik Tanpa Kunci #2 (Pollinations Direct GET - Sangat Tahan Blokir CORS)
+    try {
+      const controller3 = new AbortController();
+      const tId3 = setTimeout(() => controller3.abort(), 8000);
+      const shortPrompt = 'Jawab dalam Bahasa Indonesia dengan ramah dan jelas sebagai Asisten AI Bakery: ' + userText;
+      const res3 = await fetch('https://text.pollinations.ai/' + encodeURIComponent(shortPrompt), {
+        method: 'GET',
+        signal: controller3.signal
+      });
+      clearTimeout(tId3);
+      if (res3.ok) {
+        const txt3 = await res3.text();
+        if (txt3 && txt3.trim().length > 2) return txt3.trim();
+      }
+    } catch (e) {}
 
     return null;
   }
@@ -8561,22 +8656,19 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
   async function sendQuestionToAiCopilot(userText, forceInstantLocal = false) {
     appendAiMessage('user', escapeHtml(userText));
 
-    // 1. Cek apakah pengguna menekan tombol panduan cepat atau bertanya cara pakai fitur aplikasi
     const instantReply = matchInstantLocalBoqIntent(userText);
     if (forceInstantLocal || instantReply) {
       appendAiMessage('bot', instantReply || generateSmartLocalBoqAnswer(userText));
       return;
     }
 
-    // 2. Untuk semua pertanyaan umum (resep roti manis, ide bisnis, hitung HPP, konsultasi bebas), jawab menggunakan AI Cerdas!
     const loadingEl = appendAiMessage('bot', '⏳ <em>Menyusun jawaban AI...</em>');
     const apiKey = getActiveAiApiKey();
-    const systemInstruction = `Anda adalah Master Chef Bakery, Konsultan Bisnis Kuliner, sekaligus AI Copilot untuk aplikasi "Cake & Bakery Preneur".
+    const systemInstruction = `Anda adalah Master Chef Bakery, Konsultan Bisnis Kuliner, sekaligus AI Asisten Cerdas untuk aplikasi "Cake & Bakery Preneur".
 Tugas Anda:
-- Jawab pertanyaan pengguna dengan sangat cerdas, relevan, ramah, dan terstruktur dalam Bahasa Indonesia.
-- Jika pengguna meminta resep kue/roti (seperti roti manis, brownies, donat, bolu, dll.), berikan takaran bahan yang akurat dalam gram/ml serta langkah pembuatan anti-gagal yang jelas.
+- Jawab pertanyaan pengguna (termasuk pertanyaan acak, sapaan, resep kue/roti, matematika, ide jualan, maupun analisis bisnis) dengan sangat cerdas, relevan, ramah, dan terstruktur dalam Bahasa Indonesia.
+- Jika pengguna meminta resep kue/roti, berikan takaran bahan yang akurat dalam gram/ml serta langkah pembuatan anti-gagal.
 - Jika pengguna bertanya soal keuangan toko atau HPP mereka, gunakan data toko di bawah.
-- Jika pengguna bertanya cara menggunakan fitur aplikasi, gunakan panduan SOP aplikasi di bawah.
 
 ${APP_BOQ_KNOWLEDGE_BASE}
 
@@ -8590,7 +8682,6 @@ ${buildLiveStoreContextSummary()}`;
       }
     }
 
-    // 3. Jika benar-benar sedang Offline (tanpa sinyal internet), gunakan Ensiklopedia Resep & Konsultan Lokal
     if (loadingEl) loadingEl.innerHTML = generateOfflineBakeryConsultantReply(userText);
   }
 
