@@ -1243,17 +1243,65 @@
         <input type="text" id="sp-footer" placeholder="Misal: Terima kasih atas pesanan Anda! Simpan di suhu sejuk." />
       </div>
 
-      <!-- Kotak Aktivasi Cloud 1 Tahun Supabase -->
+      <!-- Kotak Aktivasi Cloud 1 Tahun & Login Mudah ID/Sandi Supabase -->
       <div style="border-top:1px dashed var(--border); margin:12px 0; padding-top:10px;">
-        <div style="font-size:0.84rem; font-weight:700; color:var(--primary); margin-bottom:4px;">☁️ Aktivasi Lisensi Cloud (Multi-Perangkat 1 Tahun)</div>
-        <div class="helper-text" style="margin-bottom:8px;">Masukkan kode lisensi yang Anda beli/dapatkan untuk menghubungkan HP & Laptop Anda secara otomatis.</div>
-        <div class="row-2" style="align-items:end; margin-bottom:8px;">
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Kode Lisensi Aktif</label>
-            <input type="text" id="sp-license-key" placeholder="Contoh: K9W4-7X2M-P5R8-T3N6" />
-          </div>
-          <button type="button" class="btn btn-sm btn-accent" style="height:40px;" onclick="activateCloudLicense()">🔓 Aktifkan Lisensi</button>
+        <div style="font-size:0.86rem; font-weight:700; color:var(--primary); margin-bottom:6px;">☁️ Sinkronisasi Cloud Multi-Perangkat (HP & Laptop)</div>
+
+        <!-- Pilihan Cara Masuk Cloud -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--bg); padding:4px; border-radius:10px; border:1px solid var(--border); margin-bottom:10px;">
+          <button type="button" id="btn-cloud-tab-easy" class="sub-tab-btn active" style="padding:7px 4px; font-size:0.73rem;" onclick="switchCloudLoginMode('easy')">📱 Masuk via ID / WA & Sandi</button>
+          <button type="button" id="btn-cloud-tab-license" class="sub-tab-btn" style="padding:7px 4px; font-size:0.73rem;" onclick="switchCloudLoginMode('license')">🔑 Pakai Kode Lisensi</button>
         </div>
+
+        <!-- PANEL 1: MASUK MUDAH DENGAN ID / WA & SANDI (UNTUK HP KEDUA / LAPTOP) -->
+        <div id="cloud-panel-easy" style="background:#FAF6F0; border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;">
+          <div style="font-size:0.78rem; font-weight:700; color:var(--primary); margin-bottom:4px;">📲 Masuk Cepat Tanpa Kode Lisensi (Untuk HP/PC Lain)</div>
+          <div class="helper-text" style="margin-bottom:8px;">Jika lisensi Cloud Anda sudah aktif dan Anda sudah membuat ID & Sandi Toko, cukup masukkan di bawah ini untuk menghubungkan perangkat baru:</div>
+          <div class="row-2" style="margin-bottom:8px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>ID Toko / No. WA</label>
+              <input type="text" id="sp-easy-login-id" placeholder="Misal: 08123456789" autocomplete="off" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>PIN / Sandi Toko</label>
+              <input type="password" id="sp-easy-login-pin" placeholder="Ketik sandi Anda" autocomplete="off" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-success" style="width:100%;" onclick="loginCloudWithCustomCredentials()">🔓 Masuk & Hubungkan ke Cloud Toko Saya</button>
+        </div>
+
+        <!-- PANEL 2: AKTIVASI PERTAMA KALI DENGAN KODE LISENSI -->
+        <div id="cloud-panel-license" style="display:none; background:#FAF6F0; border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px;">
+          <div style="font-size:0.78rem; font-weight:700; color:var(--primary); margin-bottom:4px;">🔑 Aktivasi dengan Kode Lisensi Resmi</div>
+          <div class="helper-text" style="margin-bottom:8px;">Gunakan ini saat pertama kali mengaktifkan lisensi Cloud 1 Tahun yang Anda beli dari Admin:</div>
+          <div class="row-2" style="align-items:end;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Kode Lisensi (16 Karakter)</label>
+              <input type="text" id="sp-license-key" placeholder="Contoh: K9W4-7X2M-P5R8-T3N6" />
+            </div>
+            <button type="button" class="btn btn-sm btn-accent" style="height:40px;" onclick="activateCloudLicense()">🔓 Aktifkan Lisensi</button>
+          </div>
+        </div>
+
+        <!-- KOTAK PENGATURAN ID & SANDI MUDAH (MUNCUL SAAT LISENSI SUDAH AKTIF) -->
+        <div id="cloud-custom-cred-setup-box" style="display:none; background:#E8F5E9; border:1px solid #2E7D32; border-radius:10px; padding:10px; margin-bottom:10px;">
+          <div style="font-size:0.79rem; font-weight:700; color:#1B5E20; margin-bottom:3px;">🛡️ Buat / Ubah ID & Sandi Login Mudah Anda</div>
+          <div class="helper-text" style="color:#2D1E1D; margin-bottom:8px;">
+            Buat ID unik (sebaiknya <strong>Nomor WA Toko</strong> Anda agar tidak sama dengan toko lain) dan <strong>Sandi/PIN</strong> yang mudah Anda ingat. Nantinya Anda cukup memakai ID & Sandi ini saat login di HP/Laptop lain!
+          </div>
+          <div class="row-2" style="margin-bottom:8px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Buat ID Login (No. WA / Username)</label>
+              <input type="text" id="sp-set-custom-id" placeholder="Misal: 08123456789" autocomplete="off" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Buat Sandi / PIN Mudah</label>
+              <input type="text" id="sp-set-custom-pin" placeholder="Misal: roti123" autocomplete="off" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm" style="background:#2E7D32; color:#FFF; width:100%;" onclick="saveCustomCloudCredentials()">💾 Simpan ID & Sandi Login Cloud Saya</button>
+        </div>
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
           <button type="button" class="btn btn-sm btn-outline" onclick="pullFromCloud(false)">📥 Tarik dari Cloud</button>
           <button type="button" class="btn btn-sm btn-outline" onclick="pushToCloud(false)">📤 Kirim ke Cloud</button>
@@ -1553,7 +1601,9 @@
         social: '',
         website: '',
         footer: 'Terima kasih telah berbelanja! Simpan produk di tempat sejuk.',
-        licenseKey: ''
+        licenseKey: '',
+        cloudLoginId: '',
+        cloudLoginPin: ''
       },
       customExpenseAccounts: [],
       materials: [],
@@ -2288,13 +2338,13 @@
   function hasCloudBusinessData(database) {
     if (!isPlainObject(database)) return false;
     const localCopy = normalizeDatabase(database);
-    if (localCopy.storeProfile) localCopy.storeProfile.licenseKey = '';
+    if (localCopy.storeProfile) { localCopy.storeProfile.licenseKey = ''; localCopy.storeProfile.cloudLoginId = ''; localCopy.storeProfile.cloudLoginPin = ''; }
     return Boolean(localCopy.customExpenseAccounts?.length || databaseHasBusinessData(localCopy));
   }
 
   function cloudComparableDatabase(database) {
     const comparable = normalizeDatabase(database);
-    if (comparable.storeProfile) comparable.storeProfile.licenseKey = '';
+    if (comparable.storeProfile) { comparable.storeProfile.licenseKey = ''; comparable.storeProfile.cloudLoginId = ''; comparable.storeProfile.cloudLoginPin = ''; }
     comparable.meta = {};
     comparable.auditLog = [];
     return JSON.stringify(comparable);
@@ -2431,8 +2481,8 @@
       if (shouldPushLocalToEmptyCloud) {
         await pushToCloud(true);
       }
-      document.getElementById('license-status-box').textContent = `Status Cloud: AKTIF & Terhubung (Lisensi: ${key})`;
-      alert('✓ Lisensi Cloud berhasil diaktifkan! Perangkat ini sekarang terhubung ke Cloud.');
+      openStoreProfileModal();
+      alert('✓ Lisensi Cloud berhasil diaktifkan! Sekarang Anda bisa membuat ID (Nomor WA) & Sandi Mudah di kotak hijau bawah agar tidak perlu menghafal kode lisensi saat login di perangkat lain.');
     } catch (err) {
       alert('Gagal mengaktifkan lisensi.\nDetail: ' + err.message);
     }
@@ -2583,6 +2633,154 @@
   }
 
   // ==================== IDENTITAS TOKO ====================
+  function switchCloudLoginMode(mode) {
+    const pEasy = document.getElementById('cloud-panel-easy');
+    const pLic = document.getElementById('cloud-panel-license');
+    const bEasy = document.getElementById('btn-cloud-tab-easy');
+    const bLic = document.getElementById('btn-cloud-tab-license');
+    if (mode === 'license') {
+      if (pEasy) pEasy.style.display = 'none';
+      if (pLic) pLic.style.display = 'block';
+      bEasy?.classList.remove('active');
+      bLic?.classList.add('active');
+    } else {
+      if (pEasy) pEasy.style.display = 'block';
+      if (pLic) pLic.style.display = 'none';
+      bEasy?.classList.add('active');
+      bLic?.classList.remove('active');
+    }
+  }
+
+  function normalizeCloudLoginId(rawId) {
+    return String(rawId || '').trim().toLowerCase().replace(/\s+/g, '');
+  }
+
+  async function saveCustomCloudCredentials() {
+    const key = (db.storeProfile.licenseKey || '').trim();
+    if (!key) {
+      alert('Aktifkan Kode Lisensi Cloud Anda terlebih dahulu sebelum membuat ID & Sandi Login mudah.');
+      return;
+    }
+    const rawId = document.getElementById('sp-set-custom-id')?.value || '';
+    const cleanId = normalizeCloudLoginId(rawId);
+    const pin = (document.getElementById('sp-set-custom-pin')?.value || '').trim();
+
+    if (cleanId.length < 4) {
+      alert('ID Login minimal 4 karakter (disarankan menggunakan Nomor WA Toko Anda, contoh: 08123456789 agar unik).');
+      return;
+    }
+    if (pin.length < 4) {
+      alert('Sandi / PIN minimal 4 karakter.');
+      return;
+    }
+
+    try {
+      showToast('⏳ Memeriksa ketersediaan ID Login di server...');
+      // Pastikan ID Login tidak bentrok dengan toko lain di Supabase!
+      const checkUrl = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?select=license_key,payload`;
+      const res = await fetch(checkUrl, {
+        method: 'GET',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      if (!res.ok) throw new Error(`Server merespons HTTP ${res.status}`);
+      const allRows = await res.json();
+      const conflict = (allRows || []).find(r =>
+        r.license_key !== key &&
+        r.license_key !== 'MASTER-AI-CONFIG' &&
+        normalizeCloudLoginId(r.payload?.storeProfile?.cloudLoginId) === cleanId
+      );
+      if (conflict) {
+        alert(`⚠️ ID Login "${rawId}" sudah dipakai oleh pengguna lain. Silakan gunakan Nomor WhatsApp lengkap toko Anda atau tambahkan angka unik.`);
+        return;
+      }
+
+      const committed = commitDatabaseChange('Simpan ID & Sandi Login Cloud', () => {
+        db.storeProfile.cloudLoginId = cleanId;
+        db.storeProfile.cloudLoginPin = pin;
+      }, { skipCloudSync: true });
+      if (!committed) return;
+
+      const pushed = await pushToCloud(false);
+      if (pushed) {
+        alert(`✓ BERHASIL! ID Login (${cleanId}) & Sandi Anda telah tersimpan di Cloud.
+
+Sekarang untuk masuk dari HP atau Laptop lain, Anda tidak perlu mengetik kode lisensi lagi—cukup masukkan ID "${cleanId}" dan Sandi Anda!`);
+        openStoreProfileModal();
+      }
+    } catch (err) {
+      alert('Gagal menyimpan ID & Sandi ke Cloud: ' + err.message);
+    }
+  }
+
+  async function loginCloudWithCustomCredentials() {
+    const rawId = document.getElementById('sp-easy-login-id')?.value || '';
+    const cleanId = normalizeCloudLoginId(rawId);
+    const pin = (document.getElementById('sp-easy-login-pin')?.value || '').trim();
+
+    if (!cleanId || !pin) {
+      alert('Masukkan ID Toko / No. WA dan Sandi Anda terlebih dahulu.');
+      return;
+    }
+    const cloudConfigProblem = getCloudConfigurationProblem();
+    if (cloudConfigProblem) {
+      alert(cloudConfigProblem);
+      return;
+    }
+
+    try {
+      showToast('⏳ Mencari akun toko Anda di Cloud...');
+      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?is_activated=eq.true&select=license_key,store_name,payload,expires_at,updated_at`;
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      if (!res.ok) throw new Error(`Server Cloud merespons HTTP ${res.status}`);
+      const rows = await res.json();
+
+      const matchedRow = (rows || []).find(r => {
+        if (!r.payload || r.license_key === 'MASTER-AI-CONFIG') return false;
+        const savedId = normalizeCloudLoginId(r.payload?.storeProfile?.cloudLoginId);
+        const savedPin = String(r.payload?.storeProfile?.cloudLoginPin || '').trim();
+        return savedId === cleanId && savedPin === pin;
+      });
+
+      if (!matchedRow) {
+        alert('❌ ID Toko atau Sandi tidak ditemukan / salah.
+
+Pastikan Anda sudah mengatur ID & Sandi terlebih dahulu di perangkat pertama yang sudah aktif Lisensi Cloud-nya.');
+        return;
+      }
+
+      if (matchedRow.expires_at && new Date() > new Date(matchedRow.expires_at)) {
+        alert('⚠️ Masa aktif Lisensi Cloud 1 Tahun toko ini telah berakhir.');
+        return;
+      }
+
+      const prepared = prepareCloudPayload(matchedRow.payload, { interactiveConflictResolution: true });
+      const committed = commitDatabaseChange('Login Cloud via ID & Sandi Toko', () => {
+        if (prepared.shouldApply) db = prepared.database;
+        db.storeProfile.licenseKey = matchedRow.license_key;
+        db.storeProfile.cloudLoginId = cleanId;
+        db.storeProfile.cloudLoginPin = pin;
+        db.meta.cloudUpdatedAt = typeof matchedRow.updated_at === 'string' && Number.isFinite(Date.parse(matchedRow.updated_at)) ? matchedRow.updated_at : null;
+      }, { skipCloudSync: true });
+
+      if (!committed) return;
+
+      // Karena pengguna sudah punya Lisensi Cloud Resmi, otomatis buka juga kunci aplikasi lokal di perangkat baru ini!
+      try { localStorage.setItem(ACCESS_STORAGE_KEY, MASTER_BUYER_ACCESS_CODE); } catch (e) {}
+      unlockGateUI();
+
+      openStoreProfileModal();
+      showToast('✓ Berhasil terhubung ke Cloud toko ' + (db.storeProfile.name || '') + '!');
+      alert(`✓ BERHASIL MASUK!
+
+Perangkat ini sekarang terhubung ke Cloud "${db.storeProfile.name || 'Toko Anda'}" dan seluruh data terbaru telah dimuat.`);
+    } catch (err) {
+      alert('Gagal masuk ke Cloud: ' + err.message);
+    }
+  }
+
   function openStoreProfileModal() {
     const sp = db.storeProfile;
     document.getElementById('sp-name').value = sp.name || '';
@@ -2593,13 +2791,24 @@
     document.getElementById('sp-website').value = sp.website || '';
     document.getElementById('sp-footer').value = sp.footer || '';
     document.getElementById('sp-license-key').value = sp.licenseKey || '';
+
+    const setupBox = document.getElementById('cloud-custom-cred-setup-box');
+    if (setupBox) {
+      setupBox.style.display = sp.licenseKey ? 'block' : 'none';
+      const idInp = document.getElementById('sp-set-custom-id');
+      const pinInp = document.getElementById('sp-set-custom-pin');
+      if (idInp) idInp.value = sp.cloudLoginId || (sp.phone ? sp.phone.replace(/[^0-9]/g, '') : '');
+      if (pinInp) pinInp.value = sp.cloudLoginPin || '';
+    }
+
     const cloudConfigProblem = getCloudConfigurationProblem();
+    const credInfo = sp.cloudLoginId ? ` • ID Login Mudah: ${sp.cloudLoginId}` : ' • (Belum atur ID & Sandi mudah)';
     document.getElementById('license-status-box').textContent = cloudConfigProblem
       ? 'Status Cloud: Belum dikonfigurasi; data hanya tersimpan lokal.'
       : sp.licenseKey
         ? (db.meta?.cloudUpdatedAt
-            ? `Status Cloud: AKTIF & Terhubung (Lisensi: ${sp.licenseKey})`
-            : `Status Cloud: Lisensi Tersimpan (${sp.licenseKey}) — Klik Tarik/Kirim untuk sinkronisasi`)
+            ? `Status Cloud: 🟢 AKTIF & Terhubung (Lisensi: ${sp.licenseKey}${credInfo})`
+            : `Status Cloud: Lisensi Tersimpan (${sp.licenseKey}${credInfo}) — Klik Tarik/Kirim untuk sinkronisasi`)
         : 'Status Cloud: Berjalan Lokal (Offline)';
     document.getElementById('modal-store-profile').classList.add('open');
   }
@@ -8050,14 +8259,27 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="gate-card">
     <div class="gate-logo">🧁</div>
     <div class="gate-title">Cake & Bakery Preneur</div>
-    <div class="gate-sub" id="gate-subtitle-text">Sistem Keuangan, Kasir, HPP & Manajemen Dapur<br>Masukkan <strong>Kode Akses Pembeli</strong> atau <strong>Kode Trial</strong> untuk membuka aplikasi.</div>
+    <div class="gate-sub" id="gate-subtitle-text">Sistem Keuangan, Kasir, HPP, Produksi & AI Copilot<br>Masukkan <strong>Kode Akses Pembeli Resmi</strong> atau coba gratis selama 3 hari.</div>
+
+    <!-- Kotak Info Kode Trial 3 Hari Gratis (Bisa Langsung Diklik Tanpa Perlu Tanya Admin) -->
+    <div style="background:#FFF8E1; border:1.5px dashed #C88A4B; border-radius:12px; padding:10px 12px; margin-bottom:14px; text-align:center;">
+      <div style="font-size:0.76rem; color:#4A2C2A; font-weight:700; margin-bottom:4px;">🎁 Ingin Coba Gratis 3 Hari?</div>
+      <div style="font-size:0.74rem; color:#7A6866; margin-bottom:7px;">
+        Ketik Kode Trial: <strong style="color:#2E7D32; font-family:monospace; font-size:0.86rem; background:#E8F5E9; padding:2px 6px; border-radius:5px;">COBA-BAKERY</strong> atau klik tombol di bawah:
+      </div>
+      <button type="button" onclick="fillAndActivateTrialCode()" class="btn btn-sm" style="background:#2E7D32; color:#FFF; width:100%; font-weight:700; padding:8px 10px;">
+        ✨ Gunakan Kode Trial Gratis 3 Hari (COBA-BAKERY)
+      </button>
+    </div>
+
     <form id="form-access-gate" onsubmit="return verifyBuyerAccessCode(event)">
-      <input type="text" id="buyer-access-input" class="gate-input" placeholder="KETIK KODE AKSES" autocomplete="off" required />
+      <input type="text" id="buyer-access-input" class="gate-input" placeholder="KETIK KODE AKSES RESMI / TRIAL" autocomplete="off" required />
       <div id="gate-error-msg" class="gate-err"></div>
       <button type="submit" onclick="verifyBuyerAccessCode(event)" class="btn btn-primary" style="padding:12px; font-size:0.92rem;">🔓 Buka Aplikasi Sekarang</button>
     </form>
-    <div style="margin-top:16px; padding-top:12px; border-top:1px dashed #E6DCD2; font-size:0.75rem; color:#7A6866;">
-      Ingin membeli Kode Akses Resmi Permanen?<br>
+
+    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #E6DCD2; font-size:0.75rem; color:#7A6866;">
+      Ingin membeli <strong>Kode Akses Resmi Permanen</strong> atau <strong>Lisensi Cloud</strong>?<br>
       <a href="https://wa.me/6281953945148?text=Halo%20Admin%20Cake%20%26%20Bakery%20Preneur%2C%20saya%20ingin%20membeli%20Kode%20Akses%20Resmi%20Aplikasi%20BakeryPreneur." target="_blank" style="color:#2E7D32; font-weight:700; text-decoration:none; display:inline-block; margin-top:4px;">📲 Hubungi Admin via WhatsApp (0819-5394-5148)</a>
     </div>
   </div>
@@ -8073,7 +8295,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="ai-drawer-box">
     <div class="ai-header">
       <div>
-        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v16 Pro</span></div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v17 Pro</span></div>
         <div style="font-size:0.7rem; color:#F6E8D7;" id="ai-engine-status-sub">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
       </div>
       <div style="display:flex; gap:5px;">
@@ -8106,7 +8328,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div class="ai-chat-body" id="ai-chat-history">
       <div class="ai-msg bot">
-        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v16 Pro)</strong> 🧁.<br><br>
+        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v17 Pro)</strong> 🧁.<br><br>
         <strong>Fitur Baru!</strong> Anda bisa meminta resep atau menempelkan resep kue Anda di chat ini (contoh: <em>"Buatkan resep Donat Kentang 20 pcs dan masukkan ke HPP"</em>), lalu klik tombol hijau <strong>➕ Masukkan Resep Ini ke Menu HPP Otomatis</strong> yang muncul di bawah jawaban saya!<br><br>
         Masih baru memakai aplikasi ini? Klik tombol hijau <strong>▶️ Mulai Tur Layar</strong> di atas untuk dipandu langkah demi langkah langsung di layar Anda.
       </div>
@@ -8230,6 +8452,14 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
         }
       }
     } catch (e) {}
+  }
+
+  function fillAndActivateTrialCode() {
+    const inputEl = document.getElementById('buyer-access-input');
+    if (inputEl) {
+      inputEl.value = TRIAL_ACCESS_CODE;
+      verifyBuyerAccessCode(new Event('submit'));
+    }
   }
 
   function verifyBuyerAccessCode(e) {
