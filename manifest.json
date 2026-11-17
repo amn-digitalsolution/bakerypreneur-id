@@ -1,11 +1,12 @@
 {
   "name": "Cake & Bakery Preneur",
   "short_name": "Bakery Preneur",
-  "description": "Sistem Keuangan, Kasir, HPP & Manajemen Dapur UMKM Bakery",
+  "description": "Sistem Keuangan, Kasir, HPP, Produksi & AI Copilot Bakery",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#FAF6F0",
   "theme_color": "#4A2C2A",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "./icon-192.png",

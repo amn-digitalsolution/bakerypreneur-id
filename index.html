@@ -567,7 +567,7 @@
         <div class="card-title">Daftar Stok Bahan & Harga Rata-Rata</div>
       </div>
       <div class="form-group">
-        <input type="text" id="mat-search" placeholder="🔍 Cari nama bahan baku..." oninput="renderAll()" />
+        <input type="text" id="mat-search" placeholder="🔍 Cari nama bahan baku..." oninput="renderMaterialListOnly()" />
       </div>
       <div id="material-list" class="item-list"></div>
     </div>
@@ -2745,9 +2745,7 @@ Sekarang untuk masuk dari HP atau Laptop lain, Anda tidak perlu mengetik kode li
       });
 
       if (!matchedRow) {
-        alert('❌ ID Toko atau Sandi tidak ditemukan / salah.
-
-Pastikan Anda sudah mengatur ID & Sandi terlebih dahulu di perangkat pertama yang sudah aktif Lisensi Cloud-nya.');
+        alert('❌ ID Toko atau Sandi tidak ditemukan / salah.\n\nPastikan Anda sudah mengatur ID & Sandi terlebih dahulu di perangkat pertama yang sudah aktif Lisensi Cloud-nya.');
         return;
       }
 
@@ -7377,6 +7375,32 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   }
 
   // ==================== RENDER SEMUA UI ====================
+  function renderMaterialListOnly() {
+    const matQuery = (document.getElementById('mat-search')?.value || '').toLowerCase();
+    const filteredMats = db.materials.filter(m => m.name.toLowerCase().includes(matQuery));
+    const el = document.getElementById('material-list');
+    if (!el) return;
+    el.innerHTML = filteredMats.length === 0
+      ? '<div class="helper-text">Tidak ada bahan baku yang cocok.</div>'
+      : filteredMats.map(m => {
+          const isLow = m.stock <= m.minStock;
+          return `
+            <div class="list-item">
+              <div class="list-item-top">
+                <div>
+                  <div class="item-name">${escapeHtml(m.name)} <span class="pill pill-neutral" style="margin-left:4px;">${escapeHtml(getMaterialCategoryLabel(m.category))}</span></div>
+                  <div class="item-meta">Biaya rata-rata bergerak: <strong>${rpUnitCost(m.avgCost)} / ${escapeHtml(m.unit)}</strong> • Nilai Stok: <strong>${rp(m.stock * m.avgCost)}</strong></div>
+                </div>
+                <span class="pill ${isLow ? 'pill-low' : 'pill-ok'}">${fmtNum(m.stock)} ${escapeHtml(m.unit)}</span>
+              </div>
+              <div class="item-actions">
+                <button class="btn btn-sm btn-warning-soft" onclick="${inlineCall('openOpnameModal', m.id)}">⚖️ Opname / Susut Stok</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+  }
+
   function renderAll() {
     document.getElementById('header-store-name').textContent = db.storeProfile.name || 'Cake & Bakery Preneur';
     document.getElementById('header-store-sub').textContent = db.storeProfile.tagline || 'Sistem Keuangan, Kasir, HPP & Akuntansi';
@@ -7420,27 +7444,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       `<option value="${escapeHtml(acc)}" ${acc === prevFilter ? 'selected' : ''}>${acc === 'ALL' ? 'Semua Pos Anggaran / Akun' : escapeHtml(acc)}</option>`
     ).join('');
 
-    const matQuery = (document.getElementById('mat-search')?.value || '').toLowerCase();
-    const filteredMats = db.materials.filter(m => m.name.toLowerCase().includes(matQuery));
-    document.getElementById('material-list').innerHTML = filteredMats.length === 0
-      ? '<div class="helper-text">Tidak ada bahan baku yang cocok.</div>'
-      : filteredMats.map(m => {
-          const isLow = m.stock <= m.minStock;
-          return `
-            <div class="list-item">
-              <div class="list-item-top">
-                <div>
-                  <div class="item-name">${escapeHtml(m.name)} <span class="pill pill-neutral" style="margin-left:4px;">${escapeHtml(getMaterialCategoryLabel(m.category))}</span></div>
-                  <div class="item-meta">Biaya rata-rata bergerak: <strong>${rpUnitCost(m.avgCost)} / ${escapeHtml(m.unit)}</strong> • Nilai Stok: <strong>${rp(m.stock * m.avgCost)}</strong></div>
-                </div>
-                <span class="pill ${isLow ? 'pill-low' : 'pill-ok'}">${fmtNum(m.stock)} ${escapeHtml(m.unit)}</span>
-              </div>
-              <div class="item-actions">
-                <button class="btn btn-sm btn-warning-soft" onclick="${inlineCall('openOpnameModal', m.id)}">⚖️ Opname / Susut Stok</button>
-              </div>
-            </div>
-          `;
-        }).join('');
+    renderMaterialListOnly();
 
     document.getElementById('recipe-cards-list').innerHTML = db.recipes.length === 0
       ? '<div class="card"><div class="helper-text">Belum ada resep produk. Klik <strong>+ Resep Kue</strong> atau <strong>+ Paket Snackbox/Nampan</strong>.</div></div>'
@@ -8295,7 +8299,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="ai-drawer-box">
     <div class="ai-header">
       <div>
-        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v17 Pro</span></div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v18 Pro</span></div>
         <div style="font-size:0.7rem; color:#F6E8D7;" id="ai-engine-status-sub">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
       </div>
       <div style="display:flex; gap:5px;">
@@ -8328,7 +8332,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div class="ai-chat-body" id="ai-chat-history">
       <div class="ai-msg bot">
-        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v17 Pro)</strong> 🧁.<br><br>
+        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v18 Pro)</strong> 🧁.<br><br>
         <strong>Fitur Baru!</strong> Anda bisa meminta resep atau menempelkan resep kue Anda di chat ini (contoh: <em>"Buatkan resep Donat Kentang 20 pcs dan masukkan ke HPP"</em>), lalu klik tombol hijau <strong>➕ Masukkan Resep Ini ke Menu HPP Otomatis</strong> yang muncul di bawah jawaban saya!<br><br>
         Masih baru memakai aplikasi ini? Klik tombol hijau <strong>▶️ Mulai Tur Layar</strong> di atas untuk dipandu langkah demi langkah langsung di layar Anda.
       </div>
@@ -8349,7 +8353,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
   const ACCESS_STORAGE_KEY = "cake_bakery_preneur_buyer_unlocked_v1";
   const TRIAL_START_KEY = "cake_bakery_preneur_trial_start_v1";
-  const APP_VERSION_NUMBER = "v7.0";
+  const APP_VERSION_NUMBER = "v18.1 Pro";
 
   function normalizeAccessCode(str) {
     return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -9096,7 +9100,7 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
         wastePct,
         packagingCost: 0,
         laborCost: 0,
-        overheadVal: 15,
+        overheadVal: 0,
         overheadType: 'pct',
         overheadBasis: 'materials',
         overheadAccount: 'Beban Listrik, Air & Gas',
@@ -9221,6 +9225,9 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
     let lastErrorReason = "";
 
     if (!apiKey) {
+      apiKey = getActiveAiApiKey();
+    }
+    if (!apiKey) {
       const syncedKey = await syncSharedAiKeyFromSupabase();
       if (syncedKey) apiKey = syncedKey;
     }
@@ -9229,7 +9236,7 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
     if (apiKey && apiKey.startsWith('gsk_')) {
       for (const modelName of ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
         const controller = new AbortController();
-        const tId = setTimeout(() => controller.abort(), 9000);
+        const tId = setTimeout(() => controller.abort(), 5000);
         try {
           const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -9267,7 +9274,7 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
     // 2. Jika API Key adalah Google Gemini (AIzaSy...)
     if (apiKey && apiKey.startsWith('AIza')) {
       const controller = new AbortController();
-      const tId = setTimeout(() => controller.abort(), 9000);
+      const tId = setTimeout(() => controller.abort(), 5000);
       try {
         const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey);
         const res = await fetch(endpoint, {
