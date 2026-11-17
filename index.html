@@ -8299,7 +8299,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="ai-drawer-box">
     <div class="ai-header">
       <div>
-        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v18 Pro</span></div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v18.2 Pro</span></div>
         <div style="font-size:0.7rem; color:#F6E8D7;" id="ai-engine-status-sub">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
       </div>
       <div style="display:flex; gap:5px;">
@@ -8332,7 +8332,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div class="ai-chat-body" id="ai-chat-history">
       <div class="ai-msg bot">
-        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v18 Pro)</strong> 🧁.<br><br>
+        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v18.2 Pro)</strong> 🧁.<br><br>
         <strong>Fitur Baru!</strong> Anda bisa meminta resep atau menempelkan resep kue Anda di chat ini (contoh: <em>"Buatkan resep Donat Kentang 20 pcs dan masukkan ke HPP"</em>), lalu klik tombol hijau <strong>➕ Masukkan Resep Ini ke Menu HPP Otomatis</strong> yang muncul di bawah jawaban saya!<br><br>
         Masih baru memakai aplikasi ini? Klik tombol hijau <strong>▶️ Mulai Tur Layar</strong> di atas untuk dipandu langkah demi langkah langsung di layar Anda.
       </div>
@@ -8353,7 +8353,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
   const ACCESS_STORAGE_KEY = "cake_bakery_preneur_buyer_unlocked_v1";
   const TRIAL_START_KEY = "cake_bakery_preneur_trial_start_v1";
-  const APP_VERSION_NUMBER = "v18.1 Pro";
+  const APP_VERSION_NUMBER = "v18.2 Pro";
 
   function normalizeAccessCode(str) {
     return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -8751,12 +8751,58 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
     return "";
   }
 
+  const GROQ_ACTIVE_MODEL_CACHE = "cake_bakery_preneur_groq_model_v1";
+
+  function getCachedGroqModel() {
+    try { return localStorage.getItem(GROQ_ACTIVE_MODEL_CACHE) || "openai/gpt-oss-120b"; } catch (e) { return "openai/gpt-oss-120b"; }
+  }
+
+  function setCachedGroqModel(m) {
+    try { if (m) localStorage.setItem(GROQ_ACTIVE_MODEL_CACHE, m); } catch (e) {}
+  }
+
+  async function discoverAvailableGroqModels(apiKey) {
+    const preferred = [
+      getCachedGroqModel(),
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'meta-llama/llama-4-maverick-17b-128e-instruct',
+      'qwen/qwen3-32b',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'gemma2-9b-it'
+    ];
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + apiKey }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const liveIds = (data?.data || [])
+          .map(x => x.id)
+          .filter(id => id && !/whisper|tts|guard|embed|playai|orpheus/i.test(id));
+        const ordered = [];
+        for (const p of preferred) {
+          if (liveIds.includes(p) && !ordered.includes(p)) ordered.push(p);
+        }
+        for (const id of liveIds) {
+          if (!ordered.includes(id)) ordered.push(id);
+        }
+        if (ordered.length > 0) return ordered;
+      }
+    } catch (e) {}
+    return [...new Set(preferred)];
+  }
+
   function updateAiStatusHeaderBadge() {
     const sub = document.getElementById('ai-engine-status-sub');
     if (!sub) return;
     const k = getActiveAiApiKey();
     if (k && k.startsWith('gsk_')) {
-      sub.innerHTML = '🟢 Terhubung: <strong>Groq Llama-3.3 Cloud AI</strong> (' + k.slice(0, 8) + '...)';
+      const activeM = getCachedGroqModel();
+      sub.innerHTML = '🟢 Terhubung: <strong>Groq Cloud AI (' + escapeHtml(activeM) + ')</strong>';
     } else if (k && k.startsWith('AIza')) {
       sub.innerHTML = '🟢 Terhubung: <strong>Google Gemini Flash AI</strong> (' + k.slice(0, 8) + '...)';
     } else {
@@ -8798,7 +8844,7 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
 
     if (diag) {
       diag.style.color = '#EF6C00';
-      diag.textContent = '⏳ Menguji koneksi kunci API langsung ke server AI...';
+      diag.textContent = '⏳ Mendeteksi model aktif & menguji kunci API ke server AI...';
     }
 
     localStorage.setItem(AI_CUSTOM_KEY_STORAGE, val);
@@ -8810,10 +8856,10 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
       updateAiStatusHeaderBadge();
       if (diag) {
         diag.style.color = '#2E7D32';
-        diag.textContent = '✓ BERHASIL! Kunci aktif & disinkronkan ke Cloud Supabase.';
+        diag.textContent = '✓ BERHASIL! Terhubung ke model "' + (testResult.model || 'AI Cloud') + '" & disinkronkan ke Supabase.';
       }
-      showToast('✓ Kunci AI aktif & berhasil diuji!');
-      setTimeout(() => { toggleAiApiKeyConfig(); }, 1200);
+      showToast('✓ Kunci AI aktif (' + (testResult.model || 'Cloud') + ')!');
+      setTimeout(() => { toggleAiApiKeyConfig(); }, 1400);
     } else {
       if (diag) {
         diag.style.color = '#C62828';
@@ -8825,28 +8871,44 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
   async function testDirectAiKeyConnection(apiKey) {
     try {
       if (apiKey.startsWith('gsk_')) {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: 'Jawab singkat: OK' }],
-            max_tokens: 10
-          })
-        });
-        if (res.ok) return { ok: true };
-        const errJson = await res.json().catch(() => ({}));
-        return { ok: false, error: errJson?.error?.message || ('HTTP ' + res.status + ' dari Groq') };
+        const candidateModels = await discoverAvailableGroqModels(apiKey);
+        let lastErr = '';
+        for (const modelName of candidateModels.slice(0, 6)) {
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: 'user', content: 'OK' }],
+              max_completion_tokens: 12
+            })
+          });
+          if (res.ok) {
+            setCachedGroqModel(modelName);
+            return { ok: true, model: modelName };
+          }
+          const errJson = await res.json().catch(() => ({}));
+          lastErr = errJson?.error?.message || ('HTTP ' + res.status);
+          if (res.status === 401) {
+            return { ok: false, error: 'Kunci API Groq tidak valid atau sudah dinonaktifkan (401).' };
+          }
+        }
+        return { ok: false, error: lastErr || 'Tidak ada model Groq yang dapat diakses oleh kunci ini.' };
       }
       if (apiKey.startsWith('AIza')) {
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'OK' }] }] })
-        });
-        if (res.ok) return { ok: true };
-        const errJson = await res.json().catch(() => ({}));
-        return { ok: false, error: errJson?.error?.message || ('HTTP ' + res.status + ' dari Gemini') };
+        for (const gemModel of ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']) {
+          const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + gemModel + ':generateContent?key=' + encodeURIComponent(apiKey), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: 'OK' }] }] })
+          });
+          if (res.ok) return { ok: true, model: gemModel };
+          if (res.status === 400 || res.status === 403) {
+            const errJson = await res.json().catch(() => ({}));
+            return { ok: false, error: errJson?.error?.message || ('HTTP ' + res.status + ' dari Gemini') };
+          }
+        }
+        return { ok: false, error: 'Kunci Gemini ditolak oleh server.' };
       }
       return { ok: false, error: 'Format kunci tidak dikenali. Kunci Groq harus berawalan gsk_ dan Gemini berawalan AIza.' };
     } catch (err) {
@@ -9232,11 +9294,12 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
       if (syncedKey) apiKey = syncedKey;
     }
 
-    // 1. Jika API Key adalah Groq (gsk_...)
+    // 1. Jika API Key adalah Groq (gsk_...) -> Gunakan Auto-Discovery Model Aktif
     if (apiKey && apiKey.startsWith('gsk_')) {
-      for (const modelName of ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
+      const candidateModels = await discoverAvailableGroqModels(apiKey);
+      for (const modelName of candidateModels.slice(0, 5)) {
         const controller = new AbortController();
-        const tId = setTimeout(() => controller.abort(), 5000);
+        const tId = setTimeout(() => controller.abort(), 7000);
         try {
           const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -9258,10 +9321,14 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
           if (res.ok) {
             const data = await res.json();
             const txt = data?.choices?.[0]?.message?.content;
-            if (txt) return { text: txt, error: null };
+            if (txt) {
+              setCachedGroqModel(modelName);
+              updateAiStatusHeaderBadge();
+              return { text: txt, error: null };
+            }
           } else {
             const errJson = await res.json().catch(() => ({}));
-            lastErrorReason = 'Groq (' + res.status + '): ' + (errJson?.error?.message || res.statusText);
+            lastErrorReason = 'Groq (' + modelName + '): ' + (errJson?.error?.message || res.statusText);
             if (res.status === 401) break;
           }
         } catch (e) {
@@ -9273,37 +9340,40 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
 
     // 2. Jika API Key adalah Google Gemini (AIzaSy...)
     if (apiKey && apiKey.startsWith('AIza')) {
-      const controller = new AbortController();
-      const tId = setTimeout(() => controller.abort(), 5000);
-      try {
-        const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey);
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemInstruction + '\n\nPERTANYAAN PENGGUNA: ' + userText }] }]
-          })
-        });
-        clearTimeout(tId);
-        if (res.ok) {
-          const data = await res.json();
-          const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (txt) return { text: txt, error: null };
-        } else {
-          const errJson = await res.json().catch(() => ({}));
-          lastErrorReason = 'Gemini (' + res.status + '): ' + (errJson?.error?.message || res.statusText);
+      for (const gemModel of ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']) {
+        const controller = new AbortController();
+        const tId = setTimeout(() => controller.abort(), 7000);
+        try {
+          const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + gemModel + ':generateContent?key=' + encodeURIComponent(apiKey);
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: systemInstruction + '\n\nPERTANYAAN PENGGUNA: ' + userText }] }]
+            })
+          });
+          clearTimeout(tId);
+          if (res.ok) {
+            const data = await res.json();
+            const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (txt) return { text: txt, error: null };
+          } else {
+            const errJson = await res.json().catch(() => ({}));
+            lastErrorReason = 'Gemini (' + res.status + '): ' + (errJson?.error?.message || res.statusText);
+            if (res.status === 400 || res.status === 403) break;
+          }
+        } catch (e) {
+          clearTimeout(tId);
+          lastErrorReason = 'Koneksi ke Gemini gagal: ' + e.message;
         }
-      } catch (e) {
-        clearTimeout(tId);
-        lastErrorReason = 'Koneksi ke Gemini gagal: ' + e.message;
       }
     }
 
     // 3. Jalur AI Cloud Publik Tanpa Kunci (Pollinations OpenAI)
     try {
       const controller2 = new AbortController();
-      const tId2 = setTimeout(() => controller2.abort(), 10000);
+      const tId2 = setTimeout(() => controller2.abort(), 9000);
       const res2 = await fetch('https://text.pollinations.ai/openai', {
         method: 'POST',
         signal: controller2.signal,
