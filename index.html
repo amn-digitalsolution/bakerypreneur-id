@@ -346,7 +346,10 @@
       <div class="brand-title" id="header-store-name">Cake & Bakery Preneur</div>
       <div class="brand-sub" id="header-store-sub">Sistem Keuangan, Kasir, HPP & Cloud</div>
     </div>
-    <button class="badge-offline" onclick="openStoreProfileModal()">🏪 Profil & Cloud</button>
+    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+      <button type="button" id="btn-toggle-umkm-guide" class="badge-offline" style="background:#2E7D32; border-color:#81C784; color:#FFF;" onclick="toggleUmkmBeginnerMode()" title="Aktifkan/Matikan Mode Pemandu Pemula UMKM">🟢 Mode Pemula: ON</button>
+      <button type="button" class="badge-offline" onclick="openStoreProfileModal()">🏪 Profil & Cloud</button>
+    </div>
   </div>
 </header>
 
@@ -359,6 +362,21 @@
     <div class="section-heading">
       <span>Dashboard Keuangan</span>
       <span style="font-size:0.75rem; color:var(--text-muted);" id="today-date"></span>
+    </div>
+
+    <!-- KOTAK MISI PRAKTIK LANGSUNG UMKM PEMULA (DAPAT DIAKTIFKAN / DIMATIKAN KAPAN SAJA) -->
+    <div id="umkm-mission-card" class="card" style="background:linear-gradient(135deg, #FFFDF9 0%, #FFF8E7 100%); border:2px solid #2E7D32; display:none;">
+      <div class="card-header" style="margin-bottom:8px;">
+        <div>
+          <div class="card-title" style="color:#1B5E20; font-size:0.95rem;">🎯 Misi Belajar Praktik Langsung (Khusus Pemula / UMKM)</div>
+          <div class="helper-text" style="color:#4A2C2A;">Klik tombol hijau di setiap langkah di bawah ini—aplikasi akan langsung membukakan halamannya & mengisikan contoh untuk Anda!</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-danger-soft" onclick="toggleUmkmBeginnerMode(false)" title="Matikan & Sembunyikan Mode Pemula">Sembunyikan ✕</button>
+      </div>
+      <div id="umkm-mission-progress-bar" style="background:#E6DCD2; height:8px; border-radius:6px; overflow:hidden; margin-bottom:10px;">
+        <div id="umkm-mission-progress-fill" style="width:0%; height:100%; background:#2E7D32; transition:width 0.3s ease;"></div>
+      </div>
+      <div id="umkm-mission-steps-list" class="item-list" style="gap:7px;"></div>
     </div>
 
     <div class="kpi-grid">
@@ -478,6 +496,10 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">+ Input Pembelian Bahan Baku</div>
+        <button type="button" class="btn btn-sm umkm-helper-only" style="background:#E8F5E9; color:#1B5E20; border:1px solid #2E7D32;" onclick="fillUmkmExample('GUDANG')">💡 Isi Contoh Belanja Tepung</button>
+      </div>
+      <div class="umkm-helper-only" style="background:#FFF8E1; border-left:4px solid #C88A4B; padding:8px 10px; border-radius:6px; font-size:0.76rem; margin-bottom:10px; color:#4A2C2A;">
+        <strong>💡 Panduan Bahasa Dapur:</strong> Setiap habis beli bahan (tepung, telur, mentega) atau dus kue, catat di sini. Bingung cara isinya? Klik tombol hijau <strong>"💡 Isi Contoh Belanja Tepung"</strong> di kanan atas kartu ini!
       </div>
       <form id="form-buy-material">
         <div class="form-group">
@@ -644,7 +666,13 @@
     <div id="recipe-form-card" class="card" style="display:none; border: 2px solid var(--accent);">
       <div class="card-header">
         <div class="card-title" id="recipe-form-title">Buat Resep Kue & Hitung HPP</div>
-        <button type="button" class="btn btn-sm btn-danger-soft" onclick="closeRecipeForm()">Tutup</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm umkm-helper-only" style="background:#E8F5E9; color:#1B5E20; border:1px solid #2E7D32;" onclick="fillUmkmExample('RESEP')">💡 Isi Contoh Resep</button>
+          <button type="button" class="btn btn-sm btn-danger-soft" onclick="closeRecipeForm()">Tutup</button>
+        </div>
+      </div>
+      <div class="umkm-helper-only" style="background:#FFF8E1; border-left:4px solid #C88A4B; padding:8px 10px; border-radius:6px; font-size:0.76rem; margin-bottom:10px; color:#4A2C2A;">
+        <strong>💡 Tips Cepat UMKM:</strong> Malas mengetik bahan satu-satu? Buka tombol <strong>🤖 Tanya AI</strong> di kanan bawah, ketik <em>"Buatkan resep kue..."</em> lalu klik <strong>Masukkan ke HPP Otomatis</strong>!
       </div>
 
       <form id="form-recipe">
@@ -2676,18 +2704,18 @@
 
     try {
       showToast('⏳ Memeriksa ketersediaan ID Login di server...');
-      // Pastikan ID Login tidak bentrok dengan toko lain di Supabase!
-      const checkUrl = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?select=license_key,payload`;
+      // Pastikan ID Login tidak bentrok dengan toko lain di Supabase menggunakan filter JSONB server-side!
+      const filterParam = encodeURIComponent('payload->storeProfile->>cloudLoginId');
+      const checkUrl = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?${filterParam}=eq.${encodeURIComponent(cleanId)}&select=license_key`;
       const res = await fetch(checkUrl, {
         method: 'GET',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
       });
       if (!res.ok) throw new Error(`Server merespons HTTP ${res.status}`);
-      const allRows = await res.json();
-      const conflict = (allRows || []).find(r =>
+      const matchedRows = await res.json();
+      const conflict = (matchedRows || []).find(r =>
         r.license_key !== key &&
-        r.license_key !== 'MASTER-AI-CONFIG' &&
-        normalizeCloudLoginId(r.payload?.storeProfile?.cloudLoginId) === cleanId
+        r.license_key !== 'MASTER-AI-CONFIG'
       );
       if (conflict) {
         alert(`⚠️ ID Login "${rawId}" sudah dipakai oleh pengguna lain. Silakan gunakan Nomor WhatsApp lengkap toko Anda atau tambahkan angka unik.`);
@@ -2729,7 +2757,9 @@ Sekarang untuk masuk dari HP atau Laptop lain, Anda tidak perlu mengetik kode li
 
     try {
       showToast('⏳ Mencari akun toko Anda di Cloud...');
-      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?is_activated=eq.true&select=license_key,store_name,payload,expires_at,updated_at`;
+      const idFilter = encodeURIComponent('payload->storeProfile->>cloudLoginId');
+      const pinFilter = encodeURIComponent('payload->storeProfile->>cloudLoginPin');
+      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?is_activated=eq.true&${idFilter}=eq.${encodeURIComponent(cleanId)}&${pinFilter}=eq.${encodeURIComponent(pin)}&select=license_key,store_name,payload,expires_at,updated_at`;
       const res = await fetch(endpoint, {
         method: 'GET',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -4895,6 +4925,52 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       });
     }
 
+    const extraPackNeeds = new Map();
+    for (const row of document.querySelectorAll('#checkout-packaging-container .checkout-pack-row')) {
+      const pMatId = row.querySelector('.checkout-pack-mat')?.value;
+      const pQty = Number(row.querySelector('.checkout-pack-qty')?.value || 0);
+      if (pMatId && pQty > 0) extraPackNeeds.set(pMatId, (extraPackNeeds.get(pMatId) || 0) + pQty);
+    }
+    const extraPackagingList = [...extraPackNeeds.entries()].map(([matId, qty]) => ({ matId, qty }));
+
+    if (orderType === 'READY') {
+      let totalExtraPackCost = 0;
+      for (const [matId, needed] of extraPackNeeds.entries()) {
+        const m = db.materials.find(x => x.id === matId);
+        if (!m || Number(m.stock || 0) + 1e-6 < needed) {
+          throw new Error(`Stok kemasan kasir '${m ? m.name : matId}' di Gudang tidak mencukupi.`);
+        }
+        const stockBefore = Number(m.stock);
+        const unitCost = Number(m.avgCost || 0);
+        const isDepleted = needed >= stockBefore - 1e-6;
+        const lineVal = isDepleted ? (stockBefore * unitCost) : roundRupiah(needed * unitCost);
+        const stockAfter = isDepleted ? 0 : (stockBefore - needed);
+        const valueAfter = isDepleted ? 0 : Math.max(0, (stockBefore * unitCost) - lineVal);
+        m.stock = stockAfter;
+        if (m.stock > 0) m.avgCost = valueAfter / m.stock;
+        totalExtraPackCost += lineVal;
+        recordMaterialMovement({
+          type: 'PRODUCTION_ISSUE', materialId: m.id, materialName: m.name, unit: m.unit,
+          quantity: -needed, unitCost: needed > 0 ? lineVal / needed : 0, value: lineVal,
+          stockBefore, stockAfter: m.stock, referenceType: 'SALE_PACKAGING', referenceId: invNo,
+          notes: `Pemakaian kemasan tambahan kasir pada nota ${invNo}`
+        });
+      }
+      if (totalExtraPackCost > 0) {
+        db.ledger.push({
+          id: uid(), date: todayStr(),
+          desc: `Beban Kemasan Tambahan Kasir ${invNo}`,
+          category: 'Beban Kemasan & Perlengkapan',
+          debitAccount: 'Beban Kemasan & Perlengkapan',
+          creditAccount: 'Persediaan Bahan Baku',
+          amount: roundRupiah(totalExtraPackCost)
+        });
+      }
+    } else if (db.poOrders.length > 0 && db.poOrders[0].invoiceNo === invNo) {
+      // Untuk PO, simpan daftar kemasan tambahan di objek PO dan baru potong stok saat PO diserahkan (completePoOrder)!
+      db.poOrders[0].extraPackaging = extraPackagingList;
+    }
+
     invoiceObj = {
       id: uid(),
       invoiceNo: invNo,
@@ -4905,6 +4981,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       phone: custPhone,
       address: custAddress,
       items: itemsCopy,
+      extraPackaging: extraPackagingList,
       subtotal,
       discount,
       shipping,
@@ -4912,44 +4989,6 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       paidAmount,
       remainingAmount
     };
-    const extraPackNeeds = new Map();
-    for (const row of document.querySelectorAll('#checkout-packaging-container .checkout-pack-row')) {
-      const pMatId = row.querySelector('.checkout-pack-mat')?.value;
-      const pQty = Number(row.querySelector('.checkout-pack-qty')?.value || 0);
-      if (pMatId && pQty > 0) extraPackNeeds.set(pMatId, (extraPackNeeds.get(pMatId) || 0) + pQty);
-    }
-    let totalExtraPackCost = 0;
-    for (const [matId, needed] of extraPackNeeds.entries()) {
-      const m = db.materials.find(x => x.id === matId);
-      if (!m || Number(m.stock || 0) + 1e-6 < needed) {
-        throw new Error(`Stok kemasan kasir '${m ? m.name : matId}' di Gudang tidak mencukupi.`);
-      }
-      const stockBefore = Number(m.stock);
-      const unitCost = Number(m.avgCost || 0);
-      const isDepleted = needed >= stockBefore - 1e-6;
-      const lineVal = isDepleted ? (stockBefore * unitCost) : roundRupiah(needed * unitCost);
-      const stockAfter = isDepleted ? 0 : (stockBefore - needed);
-      const valueAfter = isDepleted ? 0 : Math.max(0, (stockBefore * unitCost) - lineVal);
-      m.stock = stockAfter;
-      if (m.stock > 0) m.avgCost = valueAfter / m.stock;
-      totalExtraPackCost += lineVal;
-      recordMaterialMovement({
-        type: 'PRODUCTION_ISSUE', materialId: m.id, materialName: m.name, unit: m.unit,
-        quantity: -needed, unitCost: needed > 0 ? lineVal / needed : 0, value: lineVal,
-        stockBefore, stockAfter: m.stock, referenceType: 'SALE_PACKAGING', referenceId: invNo,
-        notes: `Pemakaian kemasan tambahan kasir pada nota ${invNo}`
-      });
-    }
-    if (totalExtraPackCost > 0) {
-      db.ledger.push({
-        id: uid(), date: todayStr(),
-        desc: `Beban Kemasan Tambahan Kasir ${invNo}`,
-        category: 'Beban Kemasan & Perlengkapan',
-        debitAccount: 'Beban Kemasan & Perlengkapan',
-        creditAccount: 'Persediaan Bahan Baku',
-        amount: roundRupiah(totalExtraPackCost)
-      });
-    }
 
     db.invoices.unshift(invoiceObj);
     upsertCustomerFromCheckout(custName, custPhone, custAddress, grandTotal);
@@ -4973,6 +5012,16 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
     }
     if (Number(po.paidAmount || 0) > 0 && blockFractionalLegacyAccountBalance('Uang Muka Pelanggan (PO)')) return;
 
+    if (Array.isArray(po.extraPackaging)) {
+      for (const ep of po.extraPackaging) {
+        const m = db.materials.find(x => x.id === ep.matId);
+        const needed = Number(ep.qty || 0);
+        if (needed > 0 && (!m || Number(m.stock || 0) + 1e-6 < needed)) {
+          alert(`Stok kemasan kasir '${m ? m.name : ep.matId}' di Gudang belum cukup untuk menyerahkan PO ini (butuh ${fmtNum(needed)}).`);
+          return;
+        }
+      }
+    }
     const cogsCheck = processInventoryAndCalculateCogs(po.items, false);
     if (!cogsCheck.ok) {
       alert(cogsCheck.missingHppName
@@ -5048,6 +5097,41 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
         creditAccount: 'Beban Kemasan & Perlengkapan',
         amount: cogsRes.extraBundlePackagingCost
       });
+    }
+
+    if (Array.isArray(po.extraPackaging) && po.extraPackaging.length > 0) {
+      let totalPoExtraPackCost = 0;
+      for (const ep of po.extraPackaging) {
+        const m = db.materials.find(x => x.id === ep.matId);
+        const needed = Number(ep.qty || 0);
+        if (!m || needed <= 0) continue;
+        if (Number(m.stock || 0) + 1e-6 < needed) throw new Error(`Stok kemasan '${m.name}' tidak mencukupi saat penyerahan PO.`);
+        const stockBefore = Number(m.stock);
+        const unitCost = Number(m.avgCost || 0);
+        const isDepleted = needed >= stockBefore - 1e-6;
+        const lineVal = isDepleted ? (stockBefore * unitCost) : roundRupiah(needed * unitCost);
+        const stockAfter = isDepleted ? 0 : (stockBefore - needed);
+        const valueAfter = isDepleted ? 0 : Math.max(0, (stockBefore * unitCost) - lineVal);
+        m.stock = stockAfter;
+        if (m.stock > 0) m.avgCost = valueAfter / m.stock;
+        totalPoExtraPackCost += lineVal;
+        recordMaterialMovement({
+          type: 'PRODUCTION_ISSUE', materialId: m.id, materialName: m.name, unit: m.unit,
+          quantity: -needed, unitCost: needed > 0 ? lineVal / needed : 0, value: lineVal,
+          stockBefore, stockAfter: m.stock, referenceType: 'SALE_PACKAGING', referenceId: po.invoiceNo,
+          notes: `Pemakaian kemasan tambahan kasir saat penyerahan PO ${po.invoiceNo}`
+        });
+      }
+      if (totalPoExtraPackCost > 0) {
+        db.ledger.push({
+          id: uid(), date: todayStr(),
+          desc: `Beban Kemasan Tambahan Kasir PO ${po.invoiceNo}`,
+          category: 'Beban Kemasan & Perlengkapan',
+          debitAccount: 'Beban Kemasan & Perlengkapan',
+          creditAccount: 'Persediaan Bahan Baku',
+          amount: roundRupiah(totalPoExtraPackCost)
+        });
+      }
     }
 
     const inv = db.invoices.find(x => x.invoiceNo === po.invoiceNo);
@@ -6820,7 +6904,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       Akun_Debit: l.debitAccount,
       Akun_Kredit: l.creditAccount,
       Nominal_Rp: Number(l.amount),
-      Status_Audit: l.editedAt ? `Diedit (${l.editReason || '-'})` : 'Asli'
+      Status_Audit: (Array.isArray(l.editHistory) && l.editHistory.length > 0) ? `Diedit ${l.editHistory.length}x (Alasan: ${l.editHistory[l.editHistory.length - 1].reason || '-'})` : (l.editedAt ? `Diedit (${l.editReason || '-'})` : 'Asli')
     })) : [{ No: 1, Tanggal: todayStr(), Keterangan_Transaksi: 'Belum ada transaksi', Pos_Anggaran: '-', Akun_Debit: '-', Akun_Kredit: '-', Nominal_Rp: 0, Status_Audit: '-' }];
     XLSX.utils.book_append_sheet(wb, styleAndFormatWorksheet(XLSX.utils.json_to_sheet(ledgerData)), 'Buku Besar');
 
@@ -7802,13 +7886,21 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       if (ok) { closeEditLedgerModal(); showToast('✓ Transaksi berhasil dikoreksi & ditandai telah diedit.'); }
     });
 
-    // 1. Pembelian Gudang menyimpan kategori barang
+    // 1. Pembelian Gudang menyimpan kategori barang & filter satuan kemasan tetap hidup
     const buyForm = document.getElementById('form-buy-material');
     const newBuyForm = buyForm.cloneNode(true);
     buyForm.parentNode.replaceChild(newBuyForm, buyForm);
     ['mat-buy-qty', 'mat-pack-size', 'mat-total-price', 'mat-freight', 'mat-discount', 'mat-unit', 'mat-pack-unit'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', updatePurchasePreview);
       document.getElementById(id)?.addEventListener('change', updatePurchasePreview);
+    });
+    document.getElementById('mat-unit')?.addEventListener('change', () => {
+      const baseUnit = document.getElementById('mat-unit').value;
+      const allowed = Object.keys(PACK_UNIT_CONVERSIONS[baseUnit] || {});
+      const packSelect = document.getElementById('mat-pack-unit');
+      Array.from(packSelect.options).forEach(option => { option.disabled = !allowed.includes(option.value); });
+      if (!allowed.includes(packSelect.value)) packSelect.value = allowed[0] || '';
+      updatePurchasePreview();
     });
     newBuyForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -7965,7 +8057,13 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
             notes: `Pemakaian produksi ${r.name}`
           });
         }
-        const totalProdHpp = roundRupiah(totalRawAndPackCost);
+        const recMetrics = calculateRecipeMetrics(r);
+        const recipePackCost = roundRupiah((Number(recMetrics.packaging) || 0) * batches);
+        const recipeLaborCost = roundRupiah((Number(recMetrics.labor) || 0) * batches);
+        const recipeOverheadCost = roundRupiah(calculateRecipeOverhead(r, totalRawAndPackCost, recipeLaborCost, batches));
+        const extraAllocatedTotal = recipePackCost + recipeLaborCost + recipeOverheadCost;
+
+        const totalProdHpp = roundRupiah(totalRawAndPackCost + extraAllocatedTotal);
         const actualUnitHpp = totalProdHpp / actualYield;
         const oldFinishedStock = Number(r.finishedStock || 0);
         const oldFinishedHpp = resolveFinishedGoodsUnitHpp(r);
@@ -7986,19 +8084,55 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
           unit: r.yieldUnit, quantity: actualYield, unitCost: actualUnitHpp, value: totalProdHpp,
           stockBefore: oldFinishedStock, stockAfter: finishedStockResult.stock,
           valueBefore: oldFinishedValue, valueAfter: finishedStockResult.stock * finishedStockResult.unitHpp,
-          referenceType: 'PRODUCTION', referenceId: productionId, notes: `Hasil produksi ${batches} batch (Bahan & Kemasan Gudang)`
+          referenceType: 'PRODUCTION', referenceId: productionId, notes: `Hasil produksi ${batches} batch`
         });
         db.finishedGoodsLots.find(lot => lot.id === lotId).sourceMovementId = db.finishedGoodsMovements.at(-1).id;
-        db.ledger.push({
-          id: uid(), date: todayStr(),
-          desc: `Produksi Dapur: ${r.name} (${batches} batch -> ${fmtNum(actualYield)} ${r.yieldUnit})`,
-          category: 'Persediaan Produk Jadi', debitAccount: 'Persediaan Produk Jadi', creditAccount: 'Persediaan Bahan Baku',
-          amount: totalProdHpp, referenceType: 'PRODUCTION', referenceId: productionId
-        });
+        if (roundRupiah(totalRawAndPackCost) > 0) {
+          db.ledger.push({
+            id: uid(), date: todayStr(),
+            desc: `Produksi Dapur (Bahan & Kemasan Gudang): ${r.name} (${batches} batch -> ${fmtNum(actualYield)} ${r.yieldUnit})`,
+            category: 'Persediaan Produk Jadi', debitAccount: 'Persediaan Produk Jadi', creditAccount: 'Persediaan Bahan Baku',
+            amount: roundRupiah(totalRawAndPackCost), referenceType: 'PRODUCTION', referenceId: productionId
+          });
+        }
+        const allocItems = [
+          { amount: recipePackCost, acc: 'Beban Kemasan & Perlengkapan', label: 'Alokasi Kemasan Resep' },
+          { amount: recipeLaborCost, acc: 'Beban Gaji & Upah', label: 'Alokasi Tenaga Kerja Langsung' },
+          { amount: recipeOverheadCost, acc: r.overheadAccount || 'Beban Listrik, Air & Gas', label: 'Alokasi Overhead Produksi' }
+        ];
+        for (const item of allocItems) {
+          if (item.amount > 0) {
+            const availBal = Math.max(0, getLedgerAccountBalance(db.ledger, item.acc));
+            const fromExpense = Math.min(availBal, item.amount);
+            const fromPayable = item.amount - fromExpense;
+            if (fromExpense > 0) {
+              db.ledger.push({
+                id: uid(), date: todayStr(),
+                desc: `${item.label} Produksi: ${r.name}`,
+                category: 'Persediaan Produk Jadi', debitAccount: 'Persediaan Produk Jadi', creditAccount: item.acc,
+                amount: roundRupiah(fromExpense), referenceType: 'PRODUCTION', referenceId: productionId
+              });
+            }
+            if (fromPayable > 0) {
+              db.ledger.push({
+                id: uid(), date: todayStr(),
+                desc: `${item.label} Produksi (Terutang): ${r.name}`,
+                category: 'Persediaan Produk Jadi', debitAccount: 'Persediaan Produk Jadi', creditAccount: EXPENSE_PAYABLE_ACCOUNT,
+                amount: roundRupiah(fromPayable), referenceType: 'PRODUCTION', referenceId: productionId
+              });
+            }
+          }
+        }
         db.productions.unshift({
           id: productionId, date: todayStr(), recipeId: r.id, recipeVersion: Number(r.recipeVersion) || 1,
           recipeName: r.name, recipeSnapshot, batches, actualYield, yieldUnit: r.yieldUnit,
-          wasteIncluded: incWaste, totalHpp: totalProdHpp, unitHpp: actualUnitHpp
+          wasteIncluded: incWaste, totalHpp: totalProdHpp, unitHpp: actualUnitHpp,
+          costBreakdown: {
+            materialCost: roundRupiah(totalRawAndPackCost),
+            packagingCost: recipePackCost,
+            laborCost: recipeLaborCost,
+            overheadCost: recipeOverheadCost
+          }
         });
       });
       if (ok) {
@@ -8299,7 +8433,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="ai-drawer-box">
     <div class="ai-header">
       <div>
-        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v18.2 Pro</span></div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v20 Pro</span></div>
         <div style="font-size:0.7rem; color:#F6E8D7;" id="ai-engine-status-sub">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
       </div>
       <div style="display:flex; gap:5px;">
@@ -8332,7 +8466,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div class="ai-chat-body" id="ai-chat-history">
       <div class="ai-msg bot">
-        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v18.2 Pro)</strong> 🧁.<br><br>
+        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v20 Pro)</strong> 🧁.<br><br>
         <strong>Fitur Baru!</strong> Anda bisa meminta resep atau menempelkan resep kue Anda di chat ini (contoh: <em>"Buatkan resep Donat Kentang 20 pcs dan masukkan ke HPP"</em>), lalu klik tombol hijau <strong>➕ Masukkan Resep Ini ke Menu HPP Otomatis</strong> yang muncul di bawah jawaban saya!<br><br>
         Masih baru memakai aplikasi ini? Klik tombol hijau <strong>▶️ Mulai Tur Layar</strong> di atas untuk dipandu langkah demi langkah langsung di layar Anda.
       </div>
@@ -8353,7 +8487,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
   const ACCESS_STORAGE_KEY = "cake_bakery_preneur_buyer_unlocked_v1";
   const TRIAL_START_KEY = "cake_bakery_preneur_trial_start_v1";
-  const APP_VERSION_NUMBER = "v18.2 Pro";
+  const APP_VERSION_NUMBER = "v20 Pro";
 
   function normalizeAccessCode(str) {
     return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -9681,6 +9815,311 @@ Detail teknis: <code>${escapeHtml(result.error)}</code><br><br>
       });
     }
   }
+
+  // ==================== 5. MESIN MODE PEMULA UMKM (ON/OFF), MISI PRAKTIK LANGSUNG & AUTO-FILL CONTOH ====================
+  const UMKM_BEGINNER_MODE_KEY = "cake_bakery_preneur_umkm_beginner_mode_v1";
+
+  function isUmkmBeginnerModeActive() {
+    try {
+      const val = localStorage.getItem(UMKM_BEGINNER_MODE_KEY);
+      // Default ON untuk membantu pengguna baru, tetapi bisa dimatikan kapan saja
+      return val === null ? true : val === "ON";
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function toggleUmkmBeginnerMode(forceState) {
+    const current = isUmkmBeginnerModeActive();
+    const nextState = typeof forceState === "boolean" ? forceState : !current;
+    try {
+      localStorage.setItem(UMKM_BEGINNER_MODE_KEY, nextState ? "ON" : "OFF");
+    } catch (e) {}
+    applyUmkmBeginnerModeUI();
+    showToast(nextState
+      ? "🟢 Mode Pemandu Pemula UMKM DIAKTIFKAN! Misi belajar & formulir ringkas ditampilkan."
+      : "⚪ Mode Pemandu Pemula DIMATIKAN. Menampilkan mode profesional lengkap.");
+  }
+
+  function toggleAdvancedAccountingFields() {
+    const advEls = document.querySelectorAll('.umkm-advanced-field');
+    const btn = document.getElementById('btn-toggle-adv-fields');
+    let anyHidden = false;
+    advEls.forEach(el => {
+      if (el.style.display === 'none') anyHidden = true;
+    });
+    advEls.forEach(el => {
+      el.style.display = anyHidden ? '' : 'none';
+    });
+    if (btn) {
+      btn.innerHTML = anyHidden
+        ? '🔼 Sembunyikan Kolom Akuntansi Lanjutan'
+        : '⚙️ Tampilkan Kolom Lanjutan (Ongkir, Diskon, Waste & Overhead)';
+    }
+  }
+
+  function setupCollapsibleAdvancedFields() {
+    // Tandai kolom-kolom akuntansi lanjutan agar tidak membingungkan UMKM saat Mode Pemula ON
+    const matMinGroup = document.getElementById('mat-min')?.closest('.form-group');
+    const matFreightRow = document.getElementById('mat-freight')?.closest('.row-2');
+    const recWasteRow = document.getElementById('rec-waste-pct')?.closest('.row-2');
+    const recLaborRow = document.getElementById('rec-labor')?.closest('.row-2');
+
+    [matMinGroup, matFreightRow, recWasteRow, recLaborRow].forEach(el => {
+      if (el && !el.classList.contains('umkm-advanced-field')) {
+        el.classList.add('umkm-advanced-field');
+      }
+    });
+
+    if (recLaborRow && !document.getElementById('btn-toggle-adv-fields')) {
+      const toggleWrap = document.createElement('div');
+      toggleWrap.className = 'umkm-helper-only';
+      toggleWrap.style.marginBottom = '10px';
+      toggleWrap.innerHTML = `<button type="button" id="btn-toggle-adv-fields" class="btn btn-sm btn-outline" style="width:100%; font-size:0.75rem; border-style:dashed;" onclick="toggleAdvancedAccountingFields()">⚙️ Tampilkan Kolom Lanjutan (Ongkir, Diskon, Waste & Overhead)</button>`;
+      recLaborRow.parentNode.insertBefore(toggleWrap, recLaborRow);
+    }
+  }
+
+  function renderUmkmMissionChecklist() {
+    const card = document.getElementById('umkm-mission-card');
+    const listEl = document.getElementById('umkm-mission-steps-list');
+    const fillEl = document.getElementById('umkm-mission-progress-fill');
+    if (!card || !listEl) return;
+
+    const active = isUmkmBeginnerModeActive();
+    if (!active) {
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+
+    const hasCustomStoreName = Boolean(db.storeProfile?.name && db.storeProfile.name !== 'Cake & Bakery Preneur');
+    const hasInitialModal = (db.ledger || []).some(l => l.category === 'Setoran Modal Awal' || l.creditAccount === 'Modal Pemilik');
+    const hasMaterials = (db.materials || []).length > 0;
+    const hasRecipes = (db.recipes || []).length > 0;
+    const hasProductions = (db.productions || []).length > 0 || (db.recipes || []).some(r => Number(r.finishedStock) > 0);
+    const hasSales = (db.invoices || []).length > 0;
+
+    const steps = [
+      {
+        done: hasCustomStoreName,
+        title: "Langkah 1: Atur Nama & Nomor WA Toko Anda",
+        desc: "Supaya nama toko Anda tampil rapi di struk nota WhatsApp pembeli.",
+        btnText: "🏪 Atur Nama Toko",
+        action: "umkmRunMissionStep(1)"
+      },
+      {
+        done: hasInitialModal,
+        title: "Langkah 2: Masukkan Uang Kas Modal Awal",
+        desc: "Isi berapa uang tunai pegangan toko saat ini (otomatis kami pilihkan pos Setoran Modal).",
+        btnText: "💸 Isi Modal Kas",
+        action: "umkmRunMissionStep(2)"
+      },
+      {
+        done: hasMaterials,
+        title: "Langkah 3: Catat Belanja Bahan Kue di Gudang",
+        desc: "Contoh: beli Tepung, Telur, Gula, atau Dus Kue (kami isikan contohnya, tinggal klik Simpan!).",
+        btnText: "📦 Praktik Isi Gudang",
+        action: "umkmRunMissionStep(3)"
+      },
+      {
+        done: hasRecipes,
+        title: "Langkah 4: Buat 1 Resep Kue & Hitung HPP Otomatis",
+        desc: "Bisa minta dibuatkan oleh AI secara otomatis atau isi dari contoh resep kami.",
+        btnText: "🧁 Buat Resep / AI",
+        action: "umkmRunMissionStep(4)"
+      },
+      {
+        done: hasProductions,
+        title: "Langkah 5: Catat Masak di Dapur (Produksi)",
+        desc: "Mengubah bahan mentah di gudang menjadi stok kue matang yang siap dijual di etalase.",
+        btnText: "🔥 Praktik Masak",
+        action: "umkmRunMissionStep(5)"
+      },
+      {
+        done: hasSales,
+        title: "Langkah 6: Jual Kue di Kasir & Kirim Nota WA",
+        desc: "Masukkan kue ke keranjang kasir, simpan transaksi, dan lihat struk nota digitalnya!",
+        btnText: "🛒 Buka Kasir",
+        action: "umkmRunMissionStep(6)"
+      }
+    ];
+
+    const completedCount = steps.filter(s => s.done).length;
+    const pct = Math.round((completedCount / steps.length) * 100);
+    if (fillEl) fillEl.style.width = pct + '%';
+
+    listEl.innerHTML = steps.map((s, idx) => `
+      <div class="list-item" style="padding:10px 12px; background:${s.done ? '#F1F8E9' : '#FFFFFF'}; border-color:${s.done ? '#81C784' : '#E6DCD2'}; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:200px;">
+          <div style="font-weight:700; font-size:0.84rem; color:${s.done ? '#2E7D32' : '#4A2C2A'};">
+            ${s.done ? '✅' : '⭕'} ${s.title}
+          </div>
+          <div style="font-size:0.74rem; color:#7A6866; margin-top:2px;">${s.desc}</div>
+        </div>
+        <button type="button" class="btn btn-sm" style="background:${s.done ? '#E8F5E9' : '#2E7D32'}; color:${s.done ? '#1B5E20' : '#FFFFFF'}; border:1px solid #2E7D32; white-space:nowrap;" onclick="${s.action}">
+          ${s.done ? '✓ Ulangi / Lihat' : s.btnText + ' ➡️'}
+        </button>
+      </div>
+    `).join('');
+  }
+
+  function applyUmkmBeginnerModeUI() {
+    setupCollapsibleAdvancedFields();
+    const active = isUmkmBeginnerModeActive();
+    const toggleBtn = document.getElementById('btn-toggle-umkm-guide');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = active ? '🟢 Mode Pemula: ON' : '⚪ Mode Pemula: OFF';
+      toggleBtn.style.background = active ? '#2E7D32' : 'rgba(255,255,255,0.15)';
+      toggleBtn.style.borderColor = active ? '#81C784' : 'rgba(255,255,255,0.25)';
+    }
+
+    document.querySelectorAll('.umkm-helper-only').forEach(el => {
+      el.style.display = active ? '' : 'none';
+    });
+
+    // Sembunyikan kolom akuntansi lanjutan saat Mode Pemula ON (kecuali pengguna sengaja membukanya)
+    document.querySelectorAll('.umkm-advanced-field').forEach(el => {
+      el.style.display = active ? 'none' : '';
+    });
+
+    renderUmkmMissionChecklist();
+  }
+
+  function umkmRunMissionStep(stepNumber) {
+    const navBtns = document.querySelectorAll('.bottom-nav .nav-btn');
+    if (stepNumber === 1) {
+      openStoreProfileModal();
+      showToast('💡 Silakan ketik Nama Toko & Nomor WA Anda lalu klik Simpan Pengaturan Toko.');
+      return;
+    }
+    if (stepNumber === 2) {
+      if (navBtns[3]) switchTab('dapur', navBtns[3]);
+      const subBtns = document.querySelectorAll('#sec-dapur .sub-tab-btn');
+      if (subBtns[3]) switchSubTab('dapur', 'umum', subBtns[3]);
+      const catSel = document.getElementById('tx-budget-category');
+      const amtInp = document.getElementById('tx-amount');
+      const descInp = document.getElementById('tx-desc');
+      if (catSel) {
+        catSel.value = 'Setoran Modal Awal';
+        updateGeneralExpensePaymentVisibility();
+      }
+      if (amtInp && !amtInp.value) amtInp.value = '2000000';
+      if (descInp && !descInp.value) descInp.value = 'Setoran modal kas awal toko';
+      document.getElementById('form-general-tx')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('💡 Kami sudah memilihkan "Setoran Modal Awal" & contoh Rp 2.000.000. Sesuaikan angkanya lalu klik Simpan!');
+      return;
+    }
+    if (stepNumber === 3) {
+      if (navBtns[1]) switchTab('gudang', navBtns[1]);
+      fillUmkmExample('GUDANG');
+      return;
+    }
+    if (stepNumber === 4) {
+      if (db.materials.length === 0) {
+        if (confirm('Gudang Anda masih kosong. Ingin membuka Chat AI agar AI membuatkan resep + mendaftarkan bahannya secara otomatis ke Gudang?')) {
+          openAiCopilotModal();
+          sendQuestionToAiCopilot('Buatkan resep Roti Manis Lembut untuk 16 pcs dan masukkan ke HPP otomatis');
+          return;
+        }
+      }
+      if (navBtns[2]) switchTab('hpp', navBtns[2]);
+      openRecipeForm();
+      fillUmkmExample('RESEP');
+      return;
+    }
+    if (stepNumber === 5) {
+      if (navBtns[3]) switchTab('dapur', navBtns[3]);
+      const subBtns = document.querySelectorAll('#sec-dapur .sub-tab-btn');
+      if (subBtns[1]) switchSubTab('dapur', 'produksi', subBtns[1]);
+      updateProductionPreview();
+      document.getElementById('form-production')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('💡 Pilih resep kue yang dimasak hari ini lalu klik "Proses Produksi & Potong Stok Bahan"!');
+      return;
+    }
+    if (stepNumber === 6) {
+      if (navBtns[3]) switchTab('dapur', navBtns[3]);
+      const subBtns = document.querySelectorAll('#sec-dapur .sub-tab-btn');
+      if (subBtns[0]) switchSubTab('dapur', 'kasir', subBtns[0]);
+      document.getElementById('cart-product-select')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('💡 Pilih kue di atas, klik "+ Keranjang", lalu klik "Simpan Transaksi & Tampilkan Nota"!');
+      return;
+    }
+  }
+
+  function fillUmkmExample(formType) {
+    if (formType === 'GUDANG') {
+      const cat = document.getElementById('mat-category');
+      const name = document.getElementById('mat-name');
+      const unit = document.getElementById('mat-unit');
+      const minS = document.getElementById('mat-min');
+      const bQty = document.getElementById('mat-buy-qty');
+      const pSize = document.getElementById('mat-pack-size');
+      const pUnit = document.getElementById('mat-pack-unit');
+      const tPrice = document.getElementById('mat-total-price');
+      const payM = document.getElementById('mat-pay-method');
+
+      if (cat) cat.value = 'BAHAN_BAKU';
+      if (name) name.value = 'Tepung Terigu Protein Sedang';
+      if (unit) {
+        unit.value = 'gr';
+        unit.dispatchEvent(new Event('change'));
+      }
+      if (minS) minS.value = '500';
+      if (bQty) bQty.value = '2';
+      if (pSize) pSize.value = '1';
+      if (pUnit) pUnit.value = 'kg';
+      if (tPrice) tPrice.value = '28000';
+      // Jika kas masih 0, gunakan Modal Pemilik agar pemula tidak terkena blokir saldo kas kurang
+      let cashBal = 0;
+      try { cashBal = getLedgerAccountBalance(db.ledger, 'Kas & Bank'); } catch (e) {}
+      if (payM) payM.value = cashBal >= 28000 ? 'Kas' : 'Modal';
+
+      updatePurchasePreview();
+      document.getElementById('form-buy-material')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('✨ Contoh diisi: Beli 2 bungkus Tepung @ 1 Kg seharga Rp 28.000. Silakan klik "Simpan Pembelian"!');
+      return;
+    }
+
+    if (formType === 'RESEP') {
+      const rName = document.getElementById('rec-name');
+      const rYield = document.getElementById('rec-yield');
+      const rUnit = document.getElementById('rec-yield-unit');
+      const rShelf = document.getElementById('rec-shelf-life');
+      const rSell = document.getElementById('rec-sell-price');
+
+      if (rName && !rName.value) rName.value = 'Brownies Panggang Klasik';
+      if (rYield) rYield.value = '10';
+      if (rUnit) rUnit.value = 'Pcs';
+      if (rShelf) rShelf.value = '4';
+
+      const firstQty = document.querySelector('#recipe-ingredients-container .ing-qty');
+      if (firstQty && !firstQty.value) firstQty.value = '250';
+
+      recalcRecipePreview();
+      const suggestedText = document.getElementById('prev-suggested-price')?.textContent || '';
+      const suggestedNum = Number(suggestedText.replace(/[^0-9]/g, '')) || 15000;
+      if (rSell) rSell.value = String(Math.max(5000, suggestedNum));
+      recalcRecipePreview();
+      showToast('✨ Contoh resep diisi! Anda bisa menyesuaikan takaran bahan lalu klik "Simpan Resep & Kartu HPP".');
+    }
+  }
+
+  // Hook renderAll agar setiap kali ada transaksi baru, progress Misi Pemula otomatis ter-update!
+  (function hookUmkmBeginnerModeIntoRender() {
+    const prevRenderAll = window.renderAll;
+    if (typeof prevRenderAll === 'function') {
+      window.renderAll = function() {
+        prevRenderAll.apply(this, arguments);
+        renderUmkmMissionChecklist();
+      };
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      applyUmkmBeginnerModeUI();
+    });
+    setTimeout(applyUmkmBeginnerModeUI, 100);
+  })();
+
 </script>
 </body>
 </html>
