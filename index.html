@@ -1924,7 +1924,7 @@
         });
       }
     });
-    if (Array.isArray(database.finishedGoodsLots) && database.finishedGoodsLots.length) {
+    if (Array.isArray(database.finishedGoodsLots) && (database.finishedGoodsLots.length > 0 || Number(database.meta?.schemaVersion || 0) >= 9)) {
       const lotIds = new Set();
       const lotQuantityByRecipe = new Map();
       const lotValueByRecipe = new Map();
@@ -2363,6 +2363,29 @@
     return null;
   }
 
+  // Publishable API keys are opaque keys, not JWTs. Send them only through
+  // `apikey`; Authorization is reserved for a signed-in user's access token.
+  function supabaseHeaders(extraHeaders = {}) {
+    return { apikey: SUPABASE_KEY, ...extraHeaders };
+  }
+
+  async function callCloudFunction(action, parameters = {}) {
+    const endpoint = `${SUPABASE_URL}/functions/v1/bakery-cloud`;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ action, ...parameters })
+    });
+    let result = {};
+    try { result = await response.json(); } catch (parseError) {}
+    if (!response.ok) {
+      const error = new Error(result.error || `Layanan cloud merespons HTTP ${response.status}.`);
+      if (response.status === 409) error.code = 'CLOUD_SYNC_CONFLICT';
+      throw error;
+    }
+    return result;
+  }
+
   function hasCloudBusinessData(database) {
     if (!isPlainObject(database)) return false;
     const localCopy = normalizeDatabase(database);
@@ -2449,22 +2472,15 @@
       let cloudDatabase = null;
       let cloudUpdatedAt = null;
       showToast('⏳ Memverifikasi kode lisensi...');
-      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.${encodeURIComponent(key)}&select=*`;
-      const res = await fetch(endpoint, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (!res.ok) throw new Error(`Server lisensi merespons HTTP ${res.status}.`);
-      const rows = await res.json();
-      if (!rows || rows.length === 0) {
+      const licenseResult = await callCloudFunction('get-license', { licenseKey: key });
+      if (!licenseResult.row) {
         alert('Kode lisensi tidak valid atau tidak ditemukan di server.');
         return;
       }
 
-      let row = rows[0];
+      let row = licenseResult.row;
       // Jika belum diaktifkan, aktifkan sekarang agar trigger menghitung 365 hari
       if (!row.is_activated) {
-        const conditionalFilter = cloudRowVersionFilter(row);
         let activationPayload = db;
         if (row.payload && hasCloudBusinessData(row.payload)) {
           const prepared = prepareCloudPayload(row.payload, { interactiveConflictResolution: true });
@@ -2474,22 +2490,17 @@
           }
         }
         const activationUpdatedAt = nextCloudUpdatedAt(row.updated_at);
-        const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.${encodeURIComponent(key)}&${conditionalFilter}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({ is_activated: true, store_name: db.storeProfile.name, payload: activationPayload, updated_at: activationUpdatedAt })
+        const activation = await callCloudFunction('activate-license', {
+          licenseKey: key,
+          expectedUpdatedAt: row.updated_at,
+          storeName: db.storeProfile.name,
+          payload: activationPayload,
+          updatedAt: activationUpdatedAt
         });
-        if (!patchRes.ok) throw new Error(await patchRes.text());
-        const updatedRows = await patchRes.json();
-        if (!Array.isArray(updatedRows) || updatedRows.length !== 1) {
+        if (!activation.row) {
           throw cloudConflictError('Data cloud berubah saat lisensi diaktifkan. Data perangkat dipertahankan; muat ulang status cloud sebelum mencoba lagi.');
         }
-        row = updatedRows[0];
+        row = activation.row;
       } else {
         // Payload existing dipakai jika perangkat kosong atau pengguna menyetujui penggantian data lokal.
         if (row.payload && Object.keys(row.payload).length > 0) {
@@ -2530,16 +2541,9 @@
       if (!key) return;
       const cloudConfigProblem = getCloudConfigurationProblem();
       if (cloudConfigProblem) throw new Error(`Cloud belum dikonfigurasi; data tetap tersimpan lokal. ${cloudConfigProblem}`);
-      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.${encodeURIComponent(key)}&select=payload,updated_at`;
-      const readRes = await fetch(endpoint, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (!readRes.ok) throw new Error(`Server cloud merespons HTTP ${readRes.status}.`);
-      const rows = await readRes.json();
-      if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Data lisensi cloud tidak ditemukan atau hasilnya tidak tunggal. Sinkronisasi dihentikan.');
-      const row = rows[0];
-      const versionFilter = cloudRowVersionFilter(row);
+      const readResult = await callCloudFunction('get-license', { licenseKey: key });
+      const row = readResult.row;
+      if (!row) throw new Error('Data lisensi cloud tidak ditemukan. Sinkronisasi dihentikan.');
       const baseline = localSnapshot.meta.cloudUpdatedAt;
       let remoteDatabase = null;
       if (row.payload !== null && row.payload !== undefined && Object.keys(row.payload).length > 0) {
@@ -2578,26 +2582,17 @@
       }
 
       const updatedAt = nextCloudUpdatedAt(row.updated_at);
-      const writeRes = await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.${encodeURIComponent(key)}&${versionFilter}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          store_name: localSnapshot.storeProfile.name,
-          payload: localSnapshot,
-          updated_at: updatedAt
-        })
+      const writeResult = await callCloudFunction('save-license', {
+        licenseKey: key,
+        expectedUpdatedAt: row.updated_at,
+        storeName: localSnapshot.storeProfile.name,
+        payload: localSnapshot,
+        updatedAt
       });
-      if (!writeRes.ok) throw new Error(`Server cloud merespons HTTP ${writeRes.status}.`);
-      const updatedRows = await writeRes.json();
-      if (!Array.isArray(updatedRows) || updatedRows.length !== 1) {
+      if (!writeResult.row) {
         throw cloudConflictError('Data cloud berubah di server saat sinkronisasi. Penulisan bersyarat tidak diterapkan; data lokal dipertahankan.');
       }
-      const savedUpdatedAt = updatedRows[0].updated_at;
+      const savedUpdatedAt = writeResult.row.updated_at;
       if (typeof savedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(savedUpdatedAt))) {
         throw new Error('Server tidak mengembalikan versi terbaru cloud; pembaruan lokal tidak dikonfirmasi.');
       }
@@ -2623,15 +2618,9 @@
       return false;
     }
     try {
-      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.${encodeURIComponent(key)}&select=payload,expires_at,updated_at`;
-      const res = await fetch(endpoint, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (!res.ok) throw new Error(`Server cloud merespons HTTP ${res.status}.`);
-      const rows = await res.json();
-      if (rows && rows.length > 0) {
-        const r = rows[0];
+      const readResult = await callCloudFunction('get-license', { licenseKey: key });
+      if (readResult.row) {
+        const r = readResult.row;
         // Cek kadaluwarsa 365 hari
         if (r.expires_at && new Date() > new Date(r.expires_at)) {
           const expired = commitDatabaseChange('Lisensi cloud kedaluwarsa; beralih ke mode lokal', () => {
@@ -2657,6 +2646,7 @@
     } catch (err) {
       console.error('Cloud Pull Error:', err);
       if (err.code === 'CLOUD_DATA_CONFLICT') showToast(`⚠️ Sinkronisasi dihentikan. ${err.message}`);
+      else if (!silent) showToast(`⚠️ Data lokal tidak diubah; gagal menarik data cloud: ${err.message}`);
     }
   }
 
@@ -2683,6 +2673,22 @@
     return String(rawId || '').trim().toLowerCase().replace(/\s+/g, '');
   }
 
+  async function hashCloudPin(pinText, saltId = '') {
+    const raw = `bakerypreneur_v21:${normalizeCloudLoginId(saltId)}:${String(pinText || '').trim()}`;
+    if (window.crypto && window.crypto.subtle) {
+      const buf = new TextEncoder().encode(raw);
+      const digest = await window.crypto.subtle.digest('SHA-256', buf);
+      return 'sha256_' + Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback deterministic hash if non-HTTPS local file
+    let h = 2166136261;
+    for (let i = 0; i < raw.length; i++) {
+      h ^= raw.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return 'fnv_' + (h >>> 0).toString(16);
+  }
+
   async function saveCustomCloudCredentials() {
     const key = (db.storeProfile.licenseKey || '').trim();
     if (!key) {
@@ -2705,26 +2711,16 @@
     try {
       showToast('⏳ Memeriksa ketersediaan ID Login di server...');
       // Pastikan ID Login tidak bentrok dengan toko lain di Supabase menggunakan filter JSONB server-side!
-      const filterParam = encodeURIComponent('payload->storeProfile->>cloudLoginId');
-      const checkUrl = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?${filterParam}=eq.${encodeURIComponent(cleanId)}&select=license_key`;
-      const res = await fetch(checkUrl, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (!res.ok) throw new Error(`Server merespons HTTP ${res.status}`);
-      const matchedRows = await res.json();
-      const conflict = (matchedRows || []).find(r =>
-        r.license_key !== key &&
-        r.license_key !== 'MASTER-AI-CONFIG'
-      );
-      if (conflict) {
+      const availability = await callCloudFunction('check-login-id', { loginId: cleanId, licenseKey: key });
+      if (!availability.available) {
         alert(`⚠️ ID Login "${rawId}" sudah dipakai oleh pengguna lain. Silakan gunakan Nomor WhatsApp lengkap toko Anda atau tambahkan angka unik.`);
         return;
       }
 
+      const hashedPin = await hashCloudPin(pin, cleanId);
       const committed = commitDatabaseChange('Simpan ID & Sandi Login Cloud', () => {
         db.storeProfile.cloudLoginId = cleanId;
-        db.storeProfile.cloudLoginPin = pin;
+        db.storeProfile.cloudLoginPin = hashedPin;
       }, { skipCloudSync: true });
       if (!committed) return;
 
@@ -2757,22 +2753,9 @@ Sekarang untuk masuk dari HP atau Laptop lain, Anda tidak perlu mengetik kode li
 
     try {
       showToast('⏳ Mencari akun toko Anda di Cloud...');
-      const idFilter = encodeURIComponent('payload->storeProfile->>cloudLoginId');
-      const pinFilter = encodeURIComponent('payload->storeProfile->>cloudLoginPin');
-      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?is_activated=eq.true&${idFilter}=eq.${encodeURIComponent(cleanId)}&${pinFilter}=eq.${encodeURIComponent(pin)}&select=license_key,store_name,payload,expires_at,updated_at`;
-      const res = await fetch(endpoint, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (!res.ok) throw new Error(`Server Cloud merespons HTTP ${res.status}`);
-      const rows = await res.json();
-
-      const matchedRow = (rows || []).find(r => {
-        if (!r.payload || r.license_key === 'MASTER-AI-CONFIG') return false;
-        const savedId = normalizeCloudLoginId(r.payload?.storeProfile?.cloudLoginId);
-        const savedPin = String(r.payload?.storeProfile?.cloudLoginPin || '').trim();
-        return savedId === cleanId && savedPin === pin;
-      });
+      const hashedPin = await hashCloudPin(pin, cleanId);
+      const loginResult = await callCloudFunction('login', { loginId: cleanId, pin });
+      const matchedRow = loginResult.row;
 
       if (!matchedRow) {
         alert('❌ ID Toko atau Sandi tidak ditemukan / salah.\n\nPastikan Anda sudah mengatur ID & Sandi terlebih dahulu di perangkat pertama yang sudah aktif Lisensi Cloud-nya.');
@@ -2789,7 +2772,7 @@ Sekarang untuk masuk dari HP atau Laptop lain, Anda tidak perlu mengetik kode li
         if (prepared.shouldApply) db = prepared.database;
         db.storeProfile.licenseKey = matchedRow.license_key;
         db.storeProfile.cloudLoginId = cleanId;
-        db.storeProfile.cloudLoginPin = pin;
+        db.storeProfile.cloudLoginPin = hashedPin;
         db.meta.cloudUpdatedAt = typeof matchedRow.updated_at === 'string' && Number.isFinite(Date.parse(matchedRow.updated_at)) ? matchedRow.updated_at : null;
       }, { skipCloudSync: true });
 
@@ -2826,7 +2809,7 @@ Perangkat ini sekarang terhubung ke Cloud "${db.storeProfile.name || 'Toko Anda'
       const idInp = document.getElementById('sp-set-custom-id');
       const pinInp = document.getElementById('sp-set-custom-pin');
       if (idInp) idInp.value = sp.cloudLoginId || (sp.phone ? sp.phone.replace(/[^0-9]/g, '') : '');
-      if (pinInp) pinInp.value = sp.cloudLoginPin || '';
+      if (pinInp) { pinInp.value = ''; pinInp.placeholder = sp.cloudLoginPin ? '•••• (Tersimpan aman, isi jika ganti)' : 'Misal: roti123'; }
     }
 
     const cloudConfigProblem = getCloudConfigurationProblem();
@@ -4665,7 +4648,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       const stockBefore = Number(m.stock);
       const unitCost = Number(m.avgCost || 0);
       const isDepleted = neededSup >= stockBefore - 1e-6;
-      const lineVal = isDepleted ? (stockBefore * unitCost) : roundRupiah(neededSup * unitCost);
+      const lineVal = roundRupiah(isDepleted ? (stockBefore * unitCost) : (neededSup * unitCost));
       bundleSuppliesCogs += lineVal;
       if (executeDeduct) {
         const stockAfter = isDepleted ? 0 : (stockBefore - neededSup);
@@ -4943,7 +4926,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
         const stockBefore = Number(m.stock);
         const unitCost = Number(m.avgCost || 0);
         const isDepleted = needed >= stockBefore - 1e-6;
-        const lineVal = isDepleted ? (stockBefore * unitCost) : roundRupiah(needed * unitCost);
+        const lineVal = roundRupiah(isDepleted ? (stockBefore * unitCost) : (needed * unitCost));
         const stockAfter = isDepleted ? 0 : (stockBefore - needed);
         const valueAfter = isDepleted ? 0 : Math.max(0, (stockBefore * unitCost) - lineVal);
         m.stock = stockAfter;
@@ -5109,7 +5092,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
         const stockBefore = Number(m.stock);
         const unitCost = Number(m.avgCost || 0);
         const isDepleted = needed >= stockBefore - 1e-6;
-        const lineVal = isDepleted ? (stockBefore * unitCost) : roundRupiah(needed * unitCost);
+        const lineVal = roundRupiah(isDepleted ? (stockBefore * unitCost) : (needed * unitCost));
         const stockAfter = isDepleted ? 0 : (stockBefore - needed);
         const valueAfter = isDepleted ? 0 : Math.max(0, (stockBefore * unitCost) - lineVal);
         m.stock = stockAfter;
@@ -5890,9 +5873,19 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
       }
     });
     const metrics = calculateRecipeMetrics(r);
-    const estimatedMaterialCost = metrics.matCost * wasteFactor * batches;
-    const estimatedTotal = estimatedMaterialCost + extraPackCost;
-    lines += `<div style="margin-top:6px; border-top:1px dashed var(--accent); padding-top:4px;">Biaya bahan adonan (termasuk waste): <strong>${rp(estimatedMaterialCost)}</strong><br>Biaya kemasan gudang: <strong>${rp(extraPackCost)}</strong><br><strong>Total Nilai Produksi Aktual (Masuk HPP Lot Kue): ${rp(estimatedTotal)}</strong></div>`;
+    const estimatedMaterialCost = roundRupiah(metrics.matCost * wasteFactor * batches);
+    const recipePackCost = roundRupiah((Number(metrics.packaging) || 0) * batches);
+    const recipeLaborCost = roundRupiah((Number(metrics.labor) || 0) * batches);
+    const recipeOverheadCost = roundRupiah(calculateRecipeOverhead(r, estimatedMaterialCost + extraPackCost, recipeLaborCost, batches));
+    const estimatedTotal = roundRupiah(estimatedMaterialCost + extraPackCost + recipePackCost + recipeLaborCost + recipeOverheadCost);
+    lines += `<div style="margin-top:6px; border-top:1px dashed var(--accent); padding-top:4px;">
+      • Bahan adonan (termasuk waste): <strong>${rp(estimatedMaterialCost)}</strong><br>
+      • Kemasan tambahan dari Gudang: <strong>${rp(extraPackCost)}</strong><br>
+      ${recipePackCost > 0 ? `• Kemasan standar resep: <strong>${rp(recipePackCost)}</strong><br>` : ''}
+      ${recipeLaborCost > 0 ? `• Tenaga kerja langsung batch: <strong>${rp(recipeLaborCost)}</strong><br>` : ''}
+      ${recipeOverheadCost > 0 ? `• Overhead produksi batch: <strong>${rp(recipeOverheadCost)}</strong><br>` : ''}
+      <strong>Total HPP Produksi Batch (Masuk Nilai Lot Kue): ${rp(estimatedTotal)}</strong>
+    </div>`;
     box.innerHTML = lines;
   }
 
@@ -8044,7 +8037,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
           const stockBefore = Number(m.stock);
           const unitCost = Number(m.avgCost);
           const isDepleted = needed >= stockBefore - 1e-6;
-          const lineValue = isDepleted ? (stockBefore * unitCost) : roundRupiah(needed * unitCost);
+          const lineValue = roundRupiah(isDepleted ? (stockBefore * unitCost) : (needed * unitCost));
           const stockAfter = isDepleted ? 0 : (stockBefore - needed);
           const valueAfter = isDepleted ? 0 : Math.max(0, (stockBefore * unitCost) - lineValue);
           m.stock = stockAfter;
@@ -8433,7 +8426,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
   <div class="ai-drawer-box">
     <div class="ai-header">
       <div>
-        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v20 Pro</span></div>
+        <div style="font-size:0.95rem; font-weight:800;">🤖 AI Asisten & Auto-HPP <span style="background:#2E7D32; color:#FFF; font-size:0.65rem; padding:2px 6px; border-radius:8px; vertical-align:middle;">v21 Pro</span></div>
         <div style="font-size:0.7rem; color:#F6E8D7;" id="ai-engine-status-sub">Pemandu Step-by-Step, Analis HPP & Konsultan Resep</div>
       </div>
       <div style="display:flex; gap:5px;">
@@ -8445,7 +8438,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div id="ai-apikey-config-box" style="display:none; background:#FFF8E1; padding:10px 12px; border-bottom:1px solid #C88A4B; font-size:0.76rem;">
       <div style="font-weight:700; color:#4A2C2A; margin-bottom:4px;">🔑 Pengaturan & Tes Kunci AI Cloud (Groq / Gemini)</div>
-      <div style="color:#7A6866; margin-bottom:6px;">Tempelkan kunci <strong>Groq (<code>gsk_...</code>)</strong> atau <strong>Gemini (<code>AIzaSy...</code>)</strong> di bawah lalu klik <strong>Simpan & Tes</strong>. Kunci otomatis disinkronkan ke Supabase agar seluruh pengguna aplikasi langsung aktif:</div>
+      <div style="color:#7A6866; margin-bottom:6px;">Tempelkan kunci <strong>Groq (<code>gsk_...</code>)</strong> atau <strong>Gemini (<code>AIzaSy...</code>)</strong> di bawah lalu klik <strong>Simpan & Tes</strong>. Kunci disimpan hanya di perangkat ini:</div>
       <div style="display:grid; grid-template-columns:1fr auto; gap:6px;">
         <input type="text" id="ai-custom-key-input" placeholder="Tempel gsk_... atau AIzaSy... di sini" autocomplete="off" spellcheck="false" style="padding:7px 10px; font-size:0.78rem; font-family:monospace;" />
         <button type="button" class="btn btn-sm btn-accent" onclick="saveCustomAiApiKey()">Simpan & Tes</button>
@@ -8466,7 +8459,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
     <div class="ai-chat-body" id="ai-chat-history">
       <div class="ai-msg bot">
-        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v20 Pro)</strong> 🧁.<br><br>
+        Halo! Saya <strong>Asisten AI & Auto-HPP Cake & Bakery Preneur (v21 Pro)</strong> 🧁.<br><br>
         <strong>Fitur Baru!</strong> Anda bisa meminta resep atau menempelkan resep kue Anda di chat ini (contoh: <em>"Buatkan resep Donat Kentang 20 pcs dan masukkan ke HPP"</em>), lalu klik tombol hijau <strong>➕ Masukkan Resep Ini ke Menu HPP Otomatis</strong> yang muncul di bawah jawaban saya!<br><br>
         Masih baru memakai aplikasi ini? Klik tombol hijau <strong>▶️ Mulai Tur Layar</strong> di atas untuk dipandu langkah demi langkah langsung di layar Anda.
       </div>
@@ -8487,7 +8480,7 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
   const ACCESS_STORAGE_KEY = "cake_bakery_preneur_buyer_unlocked_v1";
   const TRIAL_START_KEY = "cake_bakery_preneur_trial_start_v1";
-  const APP_VERSION_NUMBER = "v20 Pro";
+  const APP_VERSION_NUMBER = "v21 Pro";
 
   function normalizeAccessCode(str) {
     return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -8779,7 +8772,6 @@ Pastikan nilai kartu bahan sudah diverifikasi dari opname fisik. Lanjutkan?`)) r
 
   // ==================== 3. MESIN AI ASISTEN, AUTO-IMPORT RESEP KE HPP & TUR INTERAKTIF LAYAR ====================
   const AI_CUSTOM_KEY_STORAGE = "cake_bakery_preneur_custom_ai_key_v2";
-  const CLOUD_AI_KEY_CACHE = "cake_bakery_preneur_cloud_shared_ai_key_v1";
   window._aiRecipePayloads = {};
 
   const APP_BOQ_KNOWLEDGE_BASE = `
@@ -8813,74 +8805,12 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
     }, 300);
   }
 
-  async function syncSharedAiKeyFromSupabase() {
-    if (!navigator.onLine) return null;
-    try {
-      const endpoint = `${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.MASTER-AI-CONFIG&select=store_name,payload`;
-      const res = await fetch(endpoint, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      if (res.ok) {
-        const rows = await res.json();
-        if (Array.isArray(rows) && rows.length > 0) {
-          const candidate = cleanApiKeyString(rows[0].store_name || rows[0].payload?.aiKey || '');
-          if (candidate && candidate.length > 15 && !candidate.startsWith('gsk_115J6')) {
-            localStorage.setItem(CLOUD_AI_KEY_CACHE, candidate);
-            return candidate;
-          }
-        }
-      }
-    } catch (e) {}
-    return null;
-  }
-
-  async function publishSharedAiKeyToSupabase(newKey) {
-    if (!navigator.onLine || !newKey) return false;
-    try {
-      const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.MASTER-AI-CONFIG&select=license_key`, {
-        method: 'GET',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      const existing = checkRes.ok ? await checkRes.json() : [];
-      if (Array.isArray(existing) && existing.length > 0) {
-        await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions?license_key=eq.MASTER-AI-CONFIG`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
-          },
-          body: JSON.stringify({ store_name: newKey, is_activated: true, payload: { aiKey: newKey } })
-        });
-      } else {
-        await fetch(`${SUPABASE_URL}/rest/v1/cloud_subscriptions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
-          },
-          body: JSON.stringify({ license_key: 'MASTER-AI-CONFIG', store_name: newKey, is_activated: true, payload: { aiKey: newKey } })
-        });
-      }
-      localStorage.setItem(CLOUD_AI_KEY_CACHE, newKey);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  window.addEventListener('load', () => { syncSharedAiKeyFromSupabase(); });
-
   function getActiveAiApiKey() {
     try {
       const custom = cleanApiKeyString(localStorage.getItem(AI_CUSTOM_KEY_STORAGE));
       if (custom && !custom.startsWith('gsk_115J6')) return custom;
       const legacy = cleanApiKeyString(localStorage.getItem("cake_bakery_preneur_custom_gemini_key_v1"));
       if (legacy && !legacy.startsWith('gsk_115J6') && !legacy.startsWith('AQ.')) return legacy;
-      const cloudShared = cleanApiKeyString(localStorage.getItem(CLOUD_AI_KEY_CACHE));
-      if (cloudShared && !cloudShared.startsWith('gsk_115J6')) return cloudShared;
     } catch (e) {}
     return "";
   }
@@ -8947,7 +8877,6 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
   function openAiCopilotModal() {
     document.getElementById('modal-ai-copilot')?.classList.add('open');
     updateAiStatusHeaderBadge();
-    syncSharedAiKeyFromSupabase().then((k) => { if (k) updateAiStatusHeaderBadge(); });
     try {
       const saved = getActiveAiApiKey();
       const inp = document.getElementById('ai-custom-key-input');
@@ -8986,11 +8915,10 @@ PANDUAN LENGKAP & SOP APLIKASI CAKE & BAKERY PRENEUR:
 
     const testResult = await testDirectAiKeyConnection(val);
     if (testResult.ok) {
-      await publishSharedAiKeyToSupabase(val);
       updateAiStatusHeaderBadge();
       if (diag) {
         diag.style.color = '#2E7D32';
-        diag.textContent = '✓ BERHASIL! Terhubung ke model "' + (testResult.model || 'AI Cloud') + '" & disinkronkan ke Supabase.';
+        diag.textContent = '✓ BERHASIL! Terhubung ke model "' + (testResult.model || 'AI Cloud') + '". Kunci tersimpan hanya di perangkat ini.';
       }
       showToast('✓ Kunci AI aktif (' + (testResult.model || 'Cloud') + ')!');
       setTimeout(() => { toggleAiApiKeyConfig(); }, 1400);
@@ -9422,10 +9350,6 @@ ${recLines ? `<strong>Evaluasi Margin Produk:</strong><br>${recLines}<br><br>` :
 
     if (!apiKey) {
       apiKey = getActiveAiApiKey();
-    }
-    if (!apiKey) {
-      const syncedKey = await syncSharedAiKeyFromSupabase();
-      if (syncedKey) apiKey = syncedKey;
     }
 
     // 1. Jika API Key adalah Groq (gsk_...) -> Gunakan Auto-Discovery Model Aktif
