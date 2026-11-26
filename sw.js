@@ -1,10 +1,11 @@
-const CACHE_NAME = 'bakery-preneur-v21';
+const CACHE_NAME = 'bakery-preneur-v21-1';
 const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json'
 ];
 const OPTIONAL_ASSETS = [
+  './panduan.html',
   './icon-192.png',
   './icon-512.png',
   'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'

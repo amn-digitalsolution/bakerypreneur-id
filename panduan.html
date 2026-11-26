@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4A2C2A" />
+  <title>Buku Panduan Lengkap — Cake & Bakery Preneur (v21 Pro)</title>
+  <style>
+    :root {
+      --primary: #4A2C2A;
+      --primary-light: #6D4340;
+      --accent: #C88A4B;
+      --accent-soft: #F6E8D7;
+      --bg: #FAF6F0;
+      --card: #FFFFFF;
+      --text: #2D1E1D;
+      --text-muted: #6E5D5B;
+      --border: #E6DCD2;
+      --success: #2E7D32;
+      --success-bg: #E8F5E9;
+      --warning: #EF6C00;
+      --warning-bg: #FFF3E0;
+      --radius: 14px;
+      --shadow: 0 4px 14px rgba(74, 44, 42, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); line-height: 1.65; }
+
+    /* Sticky Top Header */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #361F1E 100%);
+      color: #FFF;
+      padding: 14px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.16);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand-title { font-size: 1.08rem; font-weight: 700; letter-spacing: 0.2px; }
+    .brand-sub { font-size: 0.76rem; color: var(--accent-soft); opacity: 0.92; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-back { background: rgba(255,255,255,0.16); color: #FFF; border: 1px solid rgba(255,255,255,0.3); }
+    .btn-pdf { background: var(--accent); color: #FFF; }
+    .btn-print { background: var(--success); color: #FFF; }
+
+    /* Main Layout */
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    /* Sidebar TOC (Daftar Isi) */
+    .toc-sidebar {
+      position: sticky;
+      top: 82px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+    .toc-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent-soft);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .toc-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .toc-link {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      text-decoration: none;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .toc-link:hover, .toc-link.active {
+      background: var(--accent-soft);
+      color: var(--primary);
+    }
+
+    /* Content Area */
+    .content-area { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+    .hero-card {
+      background: linear-gradient(135deg, #FFFDF9 0%, #F6E8D7 100%);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+    .hero-card h1 { font-size: 1.45rem; color: var(--primary); margin-bottom: 6px; }
+    .hero-card p { font-size: 0.92rem; color: var(--text); margin-bottom: 14px; }
+
+    .chapter-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      scroll-margin-top: 86px;
+    }
+    .chapter-badge {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--primary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .chapter-card h2 {
+      font-size: 1.18rem;
+      color: var(--primary);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .chapter-card h3 {
+      font-size: 0.96rem;
+      color: var(--primary-light);
+      margin: 14px 0 6px;
+    }
+    .chapter-card p { font-size: 0.9rem; margin-bottom: 10px; }
+    .chapter-card ul, .chapter-card ol { margin: 6px 0 12px 20px; font-size: 0.9rem; }
+    .chapter-card li { margin-bottom: 6px; }
+
+    .tip-box {
+      background: var(--success-bg);
+      border-left: 4px solid var(--success);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      margin: 12px 0;
+    }
+    .warn-box {
+      background: var(--warning-bg);
+      border-left: 4px solid var(--warning);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      margin: 12px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.86rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--accent-soft); color: var(--primary); font-weight: 700; }
+    tr:nth-child(even) td { background: #FFFDFB; }
+
+    .back-top {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; padding: 14px 12px 50px; }
+      .toc-sidebar { position: static; max-height: none; }
+    }
+
+    @media print {
+      header, .toc-sidebar, .back-top, .no-print { display: none !important; }
+      body { background: #FFF; }
+      .layout { display: block; padding: 0; max-width: 100%; }
+      .chapter-card, .hero-card { box-shadow: none; border: 1px solid #DDD; break-inside: avoid; margin-bottom: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="brand-title">📖 Buku Panduan — Cake &amp; Bakery Preneur</div>
+      <div class="brand-sub">Panduan Praktis &amp; Kamus Istilah UMKM Bakery (Versi 21 Pro)</div>
+    </div>
+    <div class="header-actions">
+      <a href="./" class="btn btn-back">← Kembali ke Aplikasi</a>
+      <a href="./panduan_cake_bakery_preneur_v21.pdf" download="Panduan_Cake_Bakery_Preneur_v21.pdf" class="btn btn-pdf">📥 Download PDF</a>
+      <button type="button" class="btn btn-print" onclick="window.print()">🖨️ Cetak</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- DAFTAR ISI (MENU NAVIGASI PER JUDUL) -->
+  <aside class="toc-sidebar">
+    <div class="toc-title">
+      <span>📑 Daftar Isi Panduan</span>
+    </div>
+    <ul class="toc-list">
+      <li><a class="toc-link" href="#bab-1">1. 🟢 Mulai Cepat &amp; Mode Pemula</a></li>
+      <li><a class="toc-link" href="#bab-2">2. 🏪 Profil Toko &amp; Cloud HP/PC</a></li>
+      <li><a class="toc-link" href="#bab-3">3. 📦 Gudang &amp; Belanja Bahan</a></li>
+      <li><a class="toc-link" href="#bab-4">4. 🧁 Resep Kue, HPP &amp; Paket</a></li>
+      <li><a class="toc-link" href="#bab-5">5. 🔥 Produksi Dapur &amp; Lot Kue</a></li>
+      <li><a class="toc-link" href="#bab-6">6. 🛒 Kasir, Pre-Order &amp; Nota WA</a></li>
+      <li><a class="toc-link" href="#bab-7">7. 🤝 Cara Catat Konsinyasi Warung</a></li>
+      <li><a class="toc-link" href="#bab-8">8. 👥 Pelanggan &amp; 💸 Kas/Beban</a></li>
+      <li><a class="toc-link" href="#bab-9">9. 📑 Laporan Keuangan &amp; Excel</a></li>
+      <li><a class="toc-link" href="#bab-10">10. 🤖 Asisten AI &amp; Auto-Resep</a></li>
+      <li><a class="toc-link" href="#bab-11">11. 📚 Kamus Istilah Dapur &amp; Keuangan</a></li>
+    </ul>
+  </aside>
+
+  <!-- KONTEN PANDUAN -->
+  <main class="content-area">
+    <div class="hero-card" id="top">
+      <h1>Selamat Datang di Panduan Cake &amp; Bakery Preneur</h1>
+      <p>Panduan ini disusun dengan bahasa dapur sehari-hari agar pemilik usaha kue, roti, snackbox, dan bakery rumahan dapat langsung mencatat stok bahan, menghitung HPP, melayani kasir/PO, hingga mencetak laporan Laba Rugi tanpa harus paham akuntansi rumit.</p>
+      <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="./panduan_cake_bakery_preneur_v21.pdf" download="Panduan_Cake_Bakery_Preneur_v21.pdf" class="btn btn-pdf">📥 Unduh Versi PDF Lengkap</a>
+        <a href="#bab-1" class="btn btn-print">▶️ Mulai Baca dari Bab 1</a>
+      </div>
+    </div>
+
+    <!-- BAB 1 -->
+    <section class="chapter-card" id="bab-1">
+      <span class="chapter-badge">Bab 1</span>
+      <h2>🟢 Mulai Cepat &amp; Mode Pemula UMKM</h2>
+      <p>Saat pertama kali membuka aplikasi, Anda akan melihat tombol <strong>🟢 Mode Pemula: ON</strong> di pojok kanan atas layar. Fitur ini dirancang khusus untuk pengguna baru agar tidak bingung melihat banyak istilah akuntansi.</p>
+      <h3>Apa fungsi Mode Pemula?</h3>
+      <ul>
+        <li>Menampilkan papan <strong>🎯 Misi Belajar Praktik Langsung (6 Langkah)</strong> di bagian atas Dashboard.</li>
+        <li>Menyembunyikan kolom teknis lanjutan (seperti *waste*, *overhead*, dan *ongkir angkut*) agar formulir terlihat ringkas.</li>
+        <li>Menyediakan tombol <strong>💡 Isi Contoh</strong> di formulir Gudang dan Resep agar Anda langsung paham pola pengisiannya.</li>
+      </ul>
+      <div class="tip-box">
+        <strong>💡 Tips:</strong> Jika Anda sudah terbiasa dan ingin melihat seluruh kolom akuntansi lengkap, cukup klik tombol <strong>🟢 Mode Pemula: ON</strong> di pojok kanan atas untuk mematikannya menjadi <strong>⚪ Mode Pemula: OFF</strong>.
+      </div>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 2 -->
+    <section class="chapter-card" id="bab-2">
+      <span class="chapter-badge">Bab 2</span>
+      <h2>🏪 Profil Toko &amp; Sinkronisasi Cloud Multi-Perangkat</h2>
+      <p>Klik tombol <strong>🏪 Profil &amp; Cloud</strong> di pojok kanan atas aplikasi untuk mengatur identitas usaha Anda.</p>
+      <ul>
+        <li><strong>Identitas Toko:</strong> Isi Nama Toko, Alamat, No. WhatsApp, Media Sosial, dan Catatan Kaki Nota. Data ini otomatis muncul di setiap struk cetak dan pesan Nota WhatsApp ke pembeli.</li>
+        <li><strong>Mode Offline (Gratis):</strong> Secara bawaan, semua data tersimpan aman langsung di HP/Laptop Anda dan bisa dipakai tanpa kuota internet. Gunakan tombol <strong>💾 Backup File</strong> secara rutin untuk menyimpan cadangan data.</li>
+        <li><strong>Lisensi Cloud Pro (Opsional):</strong> Jika ingin memakai aplikasi di banyak perangkat sekaligus (misal HP kasir &amp; Laptop pemilik), aktifkan Kode Lisensi Cloud di menu ini, lalu buat <strong>ID Login (No. WA) &amp; PIN</strong> yang mudah diingat.</li>
+      </ul>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 3 -->
+    <section class="chapter-card" id="bab-3">
+      <span class="chapter-badge">Bab 3</span>
+      <h2>📦 Gudang &amp; Pembelian Bahan Baku</h2>
+      <p>Buka menu <strong>📦 Gudang</strong> di navigasi bawah setiap kali Anda berbelanja bahan kue atau kemasan.</p>
+      <ol>
+        <li>Pilih <strong>Kategori Stok Gudang</strong>: Bahan Baku Adonan (tepung, telur, gula), Kemasan (dus, cup, mika, plastik), atau Pelengkap (air mineral, pita).</li>
+        <li>Ketik <strong>Nama Barang</strong> dan pilih <strong>Satuan Terkecil</strong> yang biasa dipakai di resep (<code>gr</code>, <code>ml</code>, atau <code>pcs</code>).</li>
+        <li>Isi <strong>Jml Kemasan Beli</strong>, <strong>Isi per Kemasan</strong> (bisa pilih <code>kg</code>, <code>l</code>, atau <code>lusin</code> — sistem otomatis mengubahnya ke gram/ml/pcs), dan <strong>Total Harga Beli</strong> sesuai nota belanja.</li>
+        <li>Pilih <strong>Sumber Dana</strong>: <em>Kas &amp; Bank</em> (potong uang kas toko), <em>Modal Pemilik</em> (pakai uang pribadi), atau <em>Hutang Supplier</em> (bayar tempo).</li>
+        <li>Klik <strong>Simpan Pembelian &amp; Tambah Stok</strong>.</li>
+      </ol>
+      <div class="tip-box">
+        <strong>ℹ️ Fitur Tambahan di Gudang:</strong> Gunakan tombol <strong>Opname</strong> pada daftar bahan jika ada tepung tumpah/susut, atau form <strong>Retur Bahan</strong> jika mengembalikan barang rusak ke supplier.
+      </div>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 4 -->
+    <section class="chapter-card" id="bab-4">
+      <span class="chapter-badge">Bab 4</span>
+      <h2>🧁 Master Resep, HPP &amp; Paket Snackbox/Nampan</h2>
+      <p>Buka menu <strong>🧁 HPP/Paket</strong> untuk menghitung modal asli per kue dan menentukan harga jual yang menguntungkan.</p>
+      <h3>1. Membuat Resep Kue Satuan (+ Resep Kue)</h3>
+      <ul>
+        <li>Isi <strong>Nama Produk</strong>, <strong>Hasil Jadi per Resep (Yield)</strong> (misal 1 loyang jadi 10 potong), <strong>Satuan</strong>, dan <strong>Umur Simpan (hari)</strong>.</li>
+        <li>Masukkan <strong>Komposisi Bahan Baku</strong> dari stok Gudang beserta takarannya.</li>
+        <li>Geser pengatur <strong>Target Gross Margin (%)</strong> untuk melihat rekomendasi harga jual otomatis, lalu isi <strong>Harga Jual Aktual</strong> Anda.</li>
+      </ul>
+      <h3>2. Membuat Paket Bundling (+ Paket Snackbox/Nampan)</h3>
+      <p>Cocok untuk pesanan rapat, arisan, atau hampers. Cukup gabungkan beberapa kue satuan (misal 1 Risoles + 1 Lemper + 1 Brownies) ditambah kemasan/minuman dari Gudang (1 Dus + 1 Air Mineral). Saat paket terjual, stok seluruh isi kue dan dusnya otomatis terpotong.</p>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 5 -->
+    <section class="chapter-card" id="bab-5">
+      <span class="chapter-badge">Bab 5</span>
+      <h2>🔥 Dapur &amp; Realisasi Produksi</h2>
+      <p>Kue belum bisa dijual di Kasir (Ready Stock) sebelum dimasak terlebih dahulu agar stok bahan mentah berubah menjadi stok kue matang.</p>
+      <ol>
+        <li>Buka menu <strong>🛒 Kasir/Dapur</strong> $\rightarrow$ klik sub-tab <strong>🔥 Produksi</strong>.</li>
+        <li>Cek kotak <strong>📋 Rekap Kue yang Harus Dibuat</strong> di bagian atas jika ada pesanan Pre-Order (PO) yang menunggu.</li>
+        <li>Pilih resep kue, isi jumlah <strong>Batch</strong> (berapa kali adonan), dan masukkan <strong>Hasil Jadi Aktual</strong>.</li>
+        <li>Tambahkan <strong>Kemasan Produksi</strong> dari Gudang (opsional, misal plastik OPP/cup kertas).</li>
+        <li>Klik <strong>Proses Produksi &amp; Potong Stok Bahan</strong>. Stok bahan di Gudang otomatis berkurang, dan kue matang masuk ke Etalase lengkap dengan tanggal kedaluwarsanya (sistem <strong>FEFO</strong>).</li>
+      </ol>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 6 -->
+    <section class="chapter-card" id="bab-6">
+      <span class="chapter-badge">Bab 6</span>
+      <h2>🛒 Kasir, Pre-Order (PO), Retur &amp; Nota WhatsApp</h2>
+      <p>Buka menu <strong>🛒 Kasir/Dapur</strong> $\rightarrow$ sub-tab <strong>🛒 Kasir &amp; PO</strong> untuk mencatat penjualan harian.</p>
+      <ul>
+        <li><strong>Tambah ke Keranjang:</strong> Pilih kue/paket, isi jumlah beli, lalu klik <strong>+ Keranjang</strong> (bisa gabung banyak jenis kue dalam 1 nota).</li>
+        <li><strong>Ready Stock vs Pre-Order (PO):</strong>
+          <ul>
+            <li>Pilih <strong>Ready Stock</strong> jika pembeli langsung mengambil kue dari etalase hari ini.</li>
+            <li>Pilih <strong>Pre-Order (PO)</strong> jika kue baru akan dibuat dan diambil nanti. Anda bisa menerima <strong>DP / Uang Muka</strong> sekarang, dan melunasinya saat kue diserahkan di daftar <strong>📅 Pesanan Pre-Order</strong>.</li>
+          </ul>
+        </li>
+        <li><strong>Nota Digital &amp; WA:</strong> Setelah klik <strong>✓ Simpan Transaksi</strong>, nota langsung muncul. Klik <strong>📲 Kirim ke WA</strong> untuk mengirim struk rapi ke WhatsApp pembeli, atau <strong>🖨️ Print Nota / PDF</strong>.</li>
+        <li><strong>Retur &amp; Refund:</strong> Jika ada barang dikembalikan, buka <strong>🧾 Riwayat Nota Penjualan</strong> dan klik tombol Retur.</li>
+      </ul>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 7 -->
+    <section class="chapter-card" id="bab-7">
+      <span class="chapter-badge">Bab 7</span>
+      <h2>🤝 Cara Mencatat Sistem Konsinyasi (Titip Jual Warung)</h2>
+      <p>Jika Anda menitipkan kue ke warung atau kafe dengan sistem <strong>bayar yang laku saja</strong>, jangan langsung mencatatnya sebagai omzet saat kue baru diantar pagi hari.</p>
+      <h3>Cara Praktis &amp; Akurat (Catat Saat Setoran Sore):</h3>
+      <ol>
+        <li><strong>Pagi (Saat Masak &amp; Titip):</strong> Catat di <strong>🔥 Produksi</strong> saja agar kue masuk stok Etalase. Biarkan di Etalase sampai warung menyetor.</li>
+        <li><strong>Sore (Saat Hitung Laku &amp; Sisa):</strong> Misal titip 20 pcs, laku 15 pcs, sisa basi 5 pcs:
+          <ul>
+            <li><strong>Yang Laku (15 pcs):</strong> Catat di <strong>🛒 Kasir</strong> (Ready Stock, Lunas) atas nama warung tersebut. Jika warung mengambil komisi, masukkan potongan komisi di kolom <strong>Diskon (Rp)</strong>.</li>
+            <li><strong>Yang Tidak Laku &amp; Basi (5 pcs):</strong> Buka <strong>🏠 Dashboard</strong> $\rightarrow$ pada daftar <strong>🧁 Stok Kue Siap Jual</strong>, klik <strong>Spoilage / Tester</strong> lalu masukkan 5 pcs sebagai <em>Kue Kedaluwarsa / Rusak</em>.</li>
+          </ul>
+        </li>
+      </ol>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 8 -->
+    <section class="chapter-card" id="bab-8">
+      <span class="chapter-badge">Bab 8</span>
+      <h2>👥 Database Pelanggan &amp; 💸 Kas / Beban Operasional</h2>
+      <ul>
+        <li><strong>👥 Pelanggan (Mini-CRM):</strong> Setiap nama &amp; nomor WA yang Anda ketik di Kasir otomatis tersimpan di sini beserta total riwayat belanjanya. Anda bisa mencatat kesukaan pelanggan (misal: <em>"Suka brownies kurang manis"</em>) dan langsung menyapa via tombol <strong>💬 Chat WA</strong>.</li>
+        <li><strong>💸 Kas/Beban:</strong> Gunakan menu ini untuk mencatat <strong>Setoran Modal Awal</strong>, membayar <strong>Listrik/Gas/Gaji/Sewa</strong>, membeli <strong>Peralatan Dapur</strong> (oven/mixer), atau mencatat <strong>Prive</strong> (mengambil uang toko untuk keperluan pribadi).</li>
+      </ul>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 9 -->
+    <section class="chapter-card" id="bab-9">
+      <span class="chapter-badge">Bab 9</span>
+      <h2>📑 Laporan Keuangan, Buku Besar &amp; Ekspor Excel</h2>
+      <p>Buka menu <strong>📑 Laporan</strong> di pojok kanan bawah untuk memantau kesehatan keuangan usaha Anda secara otomatis:</p>
+      <ul>
+        <li><strong>Laba Rugi:</strong> Melihat total omzet, dikurangi modal kue terjual (HPP) dan biaya operasional, hingga ketemu <strong>Laba Bersih</strong>.</li>
+        <li><strong>Neraca:</strong> Melihat total harta usaha (Kas, Piutang, Stok Bahan, Stok Kue, Peralatan) dibandingkan Kewajiban &amp; Modal. Status <strong>✓ BALANCE 100%</strong> menandakan pembukuan sehat.</li>
+        <li><strong>Arus Kas:</strong> Memantau uang tunai yang benar-benar masuk dan keluar.</li>
+        <li><strong>Buku Besar:</strong> Melihat seluruh rincian catatan transaksi harian (bisa difilter per bulan/akun, dan transaksi manual bisa dikoreksi dengan jejak audit).</li>
+        <li><strong>📥 Download Laporan Lengkap (.XLSX / Excel):</strong> Mengunduh file Excel rapi berisi <strong>12 sheet lengkap</strong> siap cetak atau dibagikan ke partner usaha.</li>
+      </ul>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 10 -->
+    <section class="chapter-card" id="bab-10">
+      <span class="chapter-badge">Bab 10</span>
+      <h2>🤖 Asisten AI &amp; Auto-Resep HPP</h2>
+      <p>Klik tombol bulat <strong>🤖 Tanya AI &amp; Panduan</strong> di pojok kanan bawah layar aplikasi kapan saja Anda butuh bantuan.</p>
+      <ul>
+        <li><strong>Tanya Jawab Bisnis &amp; Cara Pakai:</strong> Tanyakan apa saja, mulai dari tips mengatasi kue bantat hingga cara mencatat transaksi.</li>
+        <li><strong>✨ Auto-Resep ke HPP:</strong> Ketik permintaan resep (contoh: <em>"Buatkan resep Brownies Sekat untuk 2 loyang dan masukkan ke HPP otomatis"</em>). AI akan menyusun takaran bahan dan menyediakan tombol sekali klik untuk langsung memasukkannya ke daftar Resep &amp; Gudang Anda.</li>
+      </ul>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+
+    <!-- BAB 11 -->
+    <section class="chapter-card" id="bab-11">
+      <span class="chapter-badge">Bab 11</span>
+      <h2>📚 Kamus Istilah Dapur &amp; Keuangan UMKM</h2>
+      <p>Penjelasan sederhana untuk istilah-istilah yang mungkin masih terasa asing:</p>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30%;">Istilah di Aplikasi</th>
+            <th>Arti Sederhana (Bahasa Sehari-hari)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>HPP (Harga Pokok Penjualan)</strong></td><td>Total modal asli yang keluar untuk membuat 1 biji/box kue (bahan + kemasan + biaya dapur).</td></tr>
+          <tr><td><strong>Yield (Hasil Jadi)</strong></td><td>Jumlah kue yang dihasilkan dari 1 kali adonan resep (misal 1 resep jadi 12 pcs).</td></tr>
+          <tr><td><strong>Gross Margin (%)</strong></td><td>Persentase keuntungan kotor dari harga jual sebelum dipotong biaya listrik/sewa bulanan.</td></tr>
+          <tr><td><strong>Waste / Susut (%)</strong></td><td>Perkiraan bahan yang menempel di wadah, tumpah, atau menguap saat proses masak (biasanya 3–5%).</td></tr>
+          <tr><td><strong>Overhead Produksi</strong></td><td>Biaya penunjang dapur saat memanggang/mengukus seperti gas LPG, listrik oven, dan air.</td></tr>
+          <tr><td><strong>FEFO (First Expired, First Out)</strong></td><td>Aturan otomatis kasir yang menjual stok kue dengan tanggal kedaluwarsa paling dekat terlebih dahulu.</td></tr>
+          <tr><td><strong>Opname Stok</strong></td><td>Mengecek dan mencocokkan jumlah stok bahan di aplikasi dengan sisa fisik nyata di dapur.</td></tr>
+          <tr><td><strong>Spoilage / Tester</strong></td><td>Kue jadi yang dikeluarkan bukan karena terjual (karena basi, rusak, atau dibagi sebagai sampel gratis).</td></tr>
+          <tr><td><strong>Piutang Pelanggan</strong></td><td>Uang yang masih harus dibayar oleh pembeli (kue sudah diambil, tapi baru bayar sebagian/DP).</td></tr>
+          <tr><td><strong>Prive Pemilik</strong></td><td>Uang kas toko yang diambil oleh pemilik untuk kebutuhan rumah tangga/pribadi (bukan biaya usaha).</td></tr>
+        </tbody>
+      </table>
+      <a href="#top" class="back-top">↑ Kembali ke Daftar Isi</a>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Highlight menu Daftar Isi yang sedang dibaca
+  const links = document.querySelectorAll('.toc-link');
+  const sections = [...links].map(l => document.querySelector(l.getAttribute('href'))).filter(Boolean);
+
+  window.addEventListener('scroll', () => {
+    let currentId = sections[0]?.id;
+    for (const sec of sections) {
+      const rect = sec.getBoundingClientRect();
+      if (rect.top <= 130) currentId = sec.id;
+    }
+    links.forEach(l => {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + currentId);
+    });
+  }, { passive: true });
+</script>
+</body>
+</html>
